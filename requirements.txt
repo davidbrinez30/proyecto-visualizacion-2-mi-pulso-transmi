@@ -1,0 +1,1 @@
+pulso-transmi[ml] @ git+https://github.com/uexternadojz/pulso-transmi-sdk.git
