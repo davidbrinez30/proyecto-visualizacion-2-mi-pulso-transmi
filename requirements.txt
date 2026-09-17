@@ -1,1 +1,5 @@
 pulso-transmi[ml] @ git+https://github.com/uexternadojz/pulso-transmi-sdk.git
+matplotlib>=3.9,<4
+joblib>=1.4,<2
+pytest>=8,<9
+requests>=2.31,<3
