@@ -148,7 +148,7 @@ def main():
         for m in ("naive_96", "seasonal_avg", "gradient_boosting")
     ]
 
-    predictions_df = pd.read_csv(predictions_path) if predictions_path.exists() else pd.DataFrame()
+    predictions_df = pd.read_csv(predictions_path, dtype={"station_id": "string"}) if predictions_path.exists() else pd.DataFrame()
 
     result = persist_to_supabase(run_row, predictions_df, metrics_rows, drift_signals)
 
@@ -162,5 +162,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
