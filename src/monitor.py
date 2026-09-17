@@ -98,7 +98,10 @@ def persist_to_supabase(run_row: dict, predictions_df: pd.DataFrame, metrics_row
         preds = predictions_df.copy()
         preds["run_id"] = run_id
         preds["target_at"] = preds["target_at"].astype(str)
-        requests.post(f"{rest}/predictions?on_conflict=run_id,station_id,target_at", headers={**headers, "Prefer": "resolution=merge-duplicates,return=minimal"}, json=preds.to_dict("records"), timeout=30).raise_for_status()
+        pred_resp = requests.post(f"{rest}/predictions?on_conflict=run_id,station_id,target_at", headers={**headers, "Prefer": "resolution=merge-duplicates,return=minimal"}, json=preds.to_dict("records"), timeout=30)
+        if not pred_resp.ok:
+            print(f"SUPABASE ERROR {pred_resp.status_code}: {pred_resp.text}")
+        pred_resp.raise_for_status()
 
     for m in metrics_rows:
         m["run_id"] = run_id
@@ -159,4 +162,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
