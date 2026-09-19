@@ -27,4 +27,5 @@ jobs:
         env:
           PULSO_API_URL: https://pulso-transmi.72-60-245-2.sslip.io
           PULSO_API_KEY: ${{ secrets.PULSO_API_KEY }}
-        run: python scripts/submit_first_prediction.py
+        run: PYTHONPATH=. python scripts/submit_first_prediction.py
+
