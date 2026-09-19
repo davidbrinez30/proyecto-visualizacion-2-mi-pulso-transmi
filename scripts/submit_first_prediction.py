@@ -110,7 +110,7 @@ def main() -> None:
         "client_run_id": client_run_id,
         "data_cutoff": cycle["data_cutoff"],
         "model": {
-            "version": f"gbr@{commit}",
+            "version": f"gbr-{commit}",
             "trained_at": None,
             "training_data_end": cycle["data_cutoff"],
             "git_commit": commit if commit != "unknown" and len(commit) >= 7 else None,
@@ -135,3 +135,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
