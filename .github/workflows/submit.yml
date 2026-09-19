@@ -1,0 +1,30 @@
+name: enviar-prediccion
+
+on:
+  workflow_dispatch:
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Entrenar (si hace falta) y generar predicciones locales
+        run: |
+          python -m src.train
+          python -m src.predict
+
+      - name: Enviar la submission real al reto (POST /v1/submissions)
+        env:
+          PULSO_API_URL: https://pulso-transmi.72-60-245-2.sslip.io
+          PULSO_API_KEY: ${{ secrets.PULSO_API_KEY }}
+        run: python scripts/submit_first_prediction.py
