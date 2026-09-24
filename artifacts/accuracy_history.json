@@ -6,5 +6,9 @@
   {
     "git_commit": "c5f6602",
     "accuracy_mean": 86.64577796548299
+  },
+  {
+    "git_commit": "c6eb714",
+    "accuracy_mean": 86.64577796548299
   }
 ]
