@@ -31,6 +31,13 @@ jobs:
           PULSO_API_URL: https://pulso-transmi.72-60-245-2.sslip.io
         run: python scripts/fetch_data.py
 
+      - name: Traer observaciones nuevas del stream de competencia (virtual clock)
+        continue-on-error: true
+        env:
+          PULSO_API_URL: https://pulso-transmi.72-60-245-2.sslip.io
+          PULSO_API_KEY: ${{ secrets.PULSO_API_KEY }}
+        run: python scripts/fetch_stream_observations.py
+
       - name: Sincronizar observations/context nuevos a Supabase
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -74,4 +81,3 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: python scripts/eval_performance.py
-

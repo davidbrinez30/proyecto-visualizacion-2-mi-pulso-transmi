@@ -17,6 +17,7 @@ esten configuradas; si no, no hace nada.
 from __future__ import annotations
 
 import os
+from urllib.parse import quote
 
 import pandas as pd
 import requests
@@ -57,10 +58,13 @@ def main() -> None:
     rest = f"{url}/rest/v1"
     now = pd.Timestamp.now(tz="UTC")
 
+    # Predicciones ya vencidas (target_at <= ahora) que aun no se evaluaron.
     already = {(r["station_id"], r["target_at"]) for r in _get_all(rest, headers, "submission_performance?select=station_id,target_at")}
+    # El "+00:00" del ISO 8601 debe ir URL-encodeado (%2B); sin encodear,
+    # PostgREST/el servidor lo interpreta como espacio y responde 400.
     preds = _get_all(
         rest, headers,
-        f"predictions?select=station_id,target_at,predicted_demand&target_at=lte.{now.isoformat()}",
+        f"predictions?select=station_id,target_at,predicted_demand&target_at=lte.{quote(now.isoformat())}",
     )
     pending = [p for p in preds if (p["station_id"], p["target_at"]) not in already]
     if not pending:
@@ -84,7 +88,7 @@ def main() -> None:
         key_ = (p["station_id"], p["target_at"])
         actual = obs_by_key.get(key_)
         if actual is None:
-            continue
+            continue  # el profesor todavia no publica el dato real para ese target_at
         predicted = p["predicted_demand"]
         abs_error = abs(actual - predicted)
         wape = abs_error / actual if actual else None

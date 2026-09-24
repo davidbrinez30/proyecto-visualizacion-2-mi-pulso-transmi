@@ -1,4 +1,4 @@
-"""Genera y envia la primera submission de predicciones al reto Pulso TransMi.
+﻿"""Genera y envia la primera submission de predicciones al reto Pulso TransMi.
 
 Flujo:
   1. Consulta GET /v1/forecast-cycles/current para saber el ciclo activo:
@@ -50,6 +50,9 @@ def main() -> None:
     headers = {"Authorization": f"Bearer {API_KEY}"}
 
     cycle_resp = requests.get(f"{BASE_URL}/v1/forecast-cycles/current", headers=headers, timeout=20)
+    if cycle_resp.status_code == 404:
+        print("No hay ningun ciclo activo en este momento (404 en /v1/forecast-cycles/current); no se envia nada.")
+        return
     cycle_resp.raise_for_status()
     cycle = cycle_resp.json()
     print("Ciclo activo:")
@@ -135,4 +138,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
