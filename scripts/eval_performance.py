@@ -108,6 +108,20 @@ def main() -> None:
         print(f"{len(pending)} predicciones vencidas, pero el profesor aun no publica el dato real de ninguna.")
         return
 
+    # La tabla predictions puede tener mas de una fila para el mismo
+    # (station_id, target_at) -- por ejemplo si el pipeline recalculo y
+    # reinserto la prediccion en corridas sucesivas sin que esa tabla haga
+    # upsert por esa misma llave. Si se manda mas de una fila con la misma
+    # llave en el mismo INSERT ... ON CONFLICT, Postgres rechaza todo el
+    # lote ("cannot affect row a second time"), asi que aqui se deja solo
+    # la ultima por llave antes de subir.
+    dedup: dict[tuple[str, str], dict] = {}
+    for row in rows_to_insert:
+        dedup[(row["station_id"], row["target_at"])] = row
+    if len(dedup) != len(rows_to_insert):
+        print(f"AVISO: {len(rows_to_insert) - len(dedup)} filas duplicadas (misma station_id+target_at) descartadas antes de insertar.")
+    rows_to_insert = list(dedup.values())
+
     resp = requests.post(
         f"{rest}/submission_performance?on_conflict=station_id,target_at",
         headers={**headers, "Prefer": "resolution=merge-duplicates,return=minimal"},
