@@ -1,4 +1,4 @@
-name: descubrir-endpoint-submissions
+﻿name: descubrir-endpoint-submissions
 
 on:
   workflow_dispatch:
@@ -22,5 +22,6 @@ jobs:
         env:
           PULSO_API_URL: https://pulso-transmi.72-60-245-2.sslip.io
           PULSO_API_KEY: ${{ secrets.PULSO_API_KEY }}
-        run: python scripts/discover_submit_api.py && python scripts/discover_submit_schema.py
+        run: python scripts/discover_submit_api.py && python scripts/discover_submit_schema.py && python scripts/discover_live_observations.py
+
 
