@@ -58,14 +58,24 @@ def main() -> None:
     if new_rows:
         new_df = pd.DataFrame(new_rows)[["observed_at", "station_id", "demand"]]
         new_df["station_id"] = new_df["station_id"].astype(str)
+        new_df["observed_at"] = pd.to_datetime(new_df["observed_at"], utc=True, errors="coerce")
 
         if OBSERVATIONS_CSV.exists():
             existing = pd.read_csv(OBSERVATIONS_CSV, dtype={"station_id": "string"})
+            # El dataset estatico y el stream en vivo pueden venir con
+            # distintos formatos de zona horaria (-05:00 vs UTC); se
+            # normaliza todo a UTC antes de combinar para que el CSV
+            # resultante quede con un unico formato consistente (si no,
+            # cualquier lectura posterior con parse_dates falla en
+            # silencio y deja la columna como texto).
+            existing["observed_at"] = pd.to_datetime(existing["observed_at"], utc=True, errors="coerce")
             combined = pd.concat([existing, new_df], ignore_index=True)
             combined = combined.drop_duplicates(subset=["station_id", "observed_at"], keep="last")
         else:
             combined = new_df
+        combined = combined.dropna(subset=["observed_at"])
         combined = combined.sort_values(["station_id", "observed_at"])
+        combined["observed_at"] = combined["observed_at"].apply(lambda ts: ts.isoformat())
         combined.to_csv(OBSERVATIONS_CSV, index=False)
         print(f"data/observations.csv actualizado: {len(combined)} filas totales.")
 

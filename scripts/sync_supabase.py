@@ -35,14 +35,14 @@ def _max_observed_at(rest: str, headers: dict, table: str) -> pd.Timestamp | Non
     rows = resp.json()
     if not rows:
         return None
-    return pd.Timestamp(rows[0]["observed_at"])
+    return pd.Timestamp(rows[0]["observed_at"]).tz_convert("UTC")
 
 
 def _upsert(rest: str, headers: dict, table: str, df: pd.DataFrame, on_conflict: str) -> int:
     if df.empty:
         return 0
     records = df.copy()
-    records["observed_at"] = records["observed_at"].astype(str)
+    records["observed_at"] = records["observed_at"].apply(lambda ts: ts.isoformat())
     total = 0
     for start in range(0, len(records), BATCH_SIZE):
         chunk = records.iloc[start:start + BATCH_SIZE].to_dict("records")
@@ -63,7 +63,16 @@ def sync_table(rest: str, headers: dict, table: str, csv_name: str, dtype: dict)
     if not csv_path.exists():
         print(f"{csv_name} no existe, se omite {table}")
         return
-    df = pd.read_csv(csv_path, dtype=dtype, parse_dates=["observed_at"])
+    df = pd.read_csv(csv_path, dtype=dtype)
+    # observed_at puede venir con distintos formatos de zona horaria mezclados
+    # (el dataset estatico usa -05:00, el stream en vivo llega en UTC), lo que
+    # hace que parse_dates de read_csv falle en silencio y deje la columna
+    # como texto. Se normaliza explicitamente a UTC aqui.
+    df["observed_at"] = pd.to_datetime(df["observed_at"], utc=True, errors="coerce")
+    if df["observed_at"].isna().any():
+        bad = df["observed_at"].isna().sum()
+        print(f"AVISO: {bad} filas de {csv_name} tienen observed_at invalido y se descartan.")
+        df = df.dropna(subset=["observed_at"])
     cutoff = _max_observed_at(rest, headers, table)
     new_rows = df if cutoff is None else df[df["observed_at"] > cutoff]
     n = _upsert(rest, headers, table, new_rows, on_conflict="station_id,observed_at" if "station_id" in df.columns else "observed_at")
