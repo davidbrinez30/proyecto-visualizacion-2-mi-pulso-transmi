@@ -3,10 +3,19 @@
 on:
   workflow_dispatch:
   schedule:
-    # El profesor sube datos nuevos cada hora, pero la ventana para enviar
-    # la prediccion de cada ciclo solo esta abierta ~25 minutos. Corremos
-    # cada 10 minutos para no perdernos ninguna ventana.
+    # El cron nativo de GitHub se puede atrasar mucho (horas) en repos poco
+    # activos, asi que este trigger es solo respaldo. El disparador real y
+    # confiable es un servicio externo (cron-job.org) que llama a la API de
+    # GitHub (workflow_dispatch) cada 15 minutos.
     - cron: "*/10 * * * *"
+
+# Evita que dos corridas se pisen (una del cron nativo, otra del disparador
+# externo, u otra manual) al mismo tiempo: si ya hay una corriendo, la
+# siguiente espera en cola en vez de correr en paralelo y pelearse por el
+# mismo push a git.
+concurrency:
+  group: auto-pipeline
+  cancel-in-progress: false
 
 jobs:
   auto:
@@ -65,6 +74,7 @@ jobs:
             echo "sin cambios"
           else
             git commit -m "pipeline automatico: nueva corrida (data + artifacts)"
+            git pull --rebase
             git push
           fi
 
