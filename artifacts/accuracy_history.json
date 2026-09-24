@@ -70,5 +70,9 @@
   {
     "git_commit": "b6c2328",
     "accuracy_mean": 86.27746899378728
+  },
+  {
+    "git_commit": "97b6af8",
+    "accuracy_mean": 86.30928095026631
   }
 ]
