@@ -8,8 +8,12 @@ Flujo:
      data_cutoff (nunca se usa nada posterior, para no "ver el futuro").
   3. Reusa exactamente la misma logica de prediccion recursiva de
      src/predict.py (predict_station) con el modelo ya entrenado
-     (artifacts/model_gbr.joblib), tomando el primer horizonte (15 min),
-     que es lo que pide el ciclo.
+     (artifacts/model_gbr.joblib). predict_station ya calcula los 4
+     horizontes (15/30/45/60 min) de una sola vez por estacion; aqui se
+     llama UNA vez por estacion (no una vez por target) y luego se toma,
+     para cada target que pida el ciclo, el horizonte que le corresponda
+     (el ciclo real del profesor pide los 4 horizontes por estacion, no
+     solo 15 min).
   4. Arma el payload segun el schema real de POST /v1/submissions
      (descubierto via /openapi.json) y lo envia con un Idempotency-Key
      unico, para poder reintentar sin duplicar si algo falla a mitad de
@@ -75,35 +79,64 @@ def main() -> None:
     last_context = ctx.iloc[-1]
     context_row = {c: last_context[c] for c in ("rain_mm", "temperature_c", "event_intensity")}
 
-    predictions = []
+    # Agrupa los targets por estacion para llamar predict_station una sola
+    # vez por estacion (calcula los 4 horizontes de una) en vez de una vez
+    # por target, que era el bug: antes se llamaba por cada target y se
+    # exigia que el horizonte fuera siempre 15 min.
+    targets_by_station: dict[str, list[dict]] = {}
     for t in targets:
-        station_id = t["station_id"]
-        expected_target_at = pd.Timestamp(t["target_at"])
-        horizon_min = t["horizon_minutes"]
-        if horizon_min != 15:
-            raise SystemExit(f"Horizonte inesperado ({horizon_min} min) para {station_id}; el script solo maneja 15 min.")
+        targets_by_station.setdefault(t["station_id"], []).append(t)
 
+    predictions = []
+    skipped = []
+    for station_id, station_targets in targets_by_station.items():
         grp = obs[obs["station_id"] == station_id].sort_values("observed_at")
         if grp.empty:
             raise SystemExit(f"Sin observaciones historicas para la estacion {station_id} antes del data_cutoff.")
         demand_hist = pd.Series(grp["demand"].values, index=grp["observed_at"].values)
         last_time = grp["observed_at"].max()
 
-        # predict_station calcula los 4 horizontes (15/30/45/60 min); solo
-        # necesitamos el primero (15 min), que corresponde al target_at del ciclo.
-        result = predict_station(demand_hist, context_row, last_time, model, feature_cols)[0]
-        computed_target_at = pd.Timestamp(result["target_at"])
-        if computed_target_at.tz_convert("UTC") != expected_target_at.tz_convert("UTC"):
-            raise SystemExit(
-                f"target_at calculado ({computed_target_at}) no coincide con el esperado por el ciclo "
-                f"({expected_target_at}) para la estacion {station_id}; revisar el data_cutoff/ultima observacion."
-            )
+        # Los 4 horizontes (15/30/45/60 min) de esta estacion, calculados una
+        # sola vez. horizon_steps 1..4 corresponde a 15/30/45/60 min.
+        results_by_step = {
+            r["horizon_steps"]: r
+            for r in predict_station(demand_hist, context_row, last_time, model, feature_cols)
+        }
 
-        predictions.append({
-            "station_id": station_id,
-            "target_at": t["target_at"],
-            "value": result["predicted_demand"],
-        })
+        for t in station_targets:
+            expected_target_at = pd.Timestamp(t["target_at"])
+            horizon_min = t["horizon_minutes"]
+
+            if horizon_min % 15 != 0:
+                skipped.append((station_id, horizon_min, "horizonte no es multiplo de 15 min"))
+                continue
+            step = horizon_min // 15
+            result = results_by_step.get(step)
+            if result is None:
+                skipped.append((station_id, horizon_min, f"predict_station no calculo el paso {step} (solo calcula hasta 60 min)"))
+                continue
+
+            computed_target_at = pd.Timestamp(result["target_at"])
+            if computed_target_at.tz_convert("UTC") != expected_target_at.tz_convert("UTC"):
+                skipped.append((
+                    station_id, horizon_min,
+                    f"target_at calculado ({computed_target_at}) no coincide con el esperado ({expected_target_at})",
+                ))
+                continue
+
+            predictions.append({
+                "station_id": station_id,
+                "target_at": t["target_at"],
+                "value": result["predicted_demand"],
+            })
+
+    if skipped:
+        print(f"\nAVISO: {len(skipped)} targets omitidos (no se pudieron predecir):")
+        for station_id, horizon_min, reason in skipped:
+            print(f"  - {station_id} ({horizon_min} min): {reason}")
+
+    if not predictions:
+        raise SystemExit("Ningun target del ciclo se pudo predecir; no se envia nada.")
 
     commit = git_commit()
     client_run_id = f"pulso-transmi-{commit}-{uuid.uuid4().hex[:8]}"
@@ -121,6 +154,7 @@ def main() -> None:
         "predictions": predictions,
     }
 
+    print(f"\n{len(predictions)} predicciones a enviar (de {len(targets)} targets pedidos por el ciclo).")
     print("\nPayload a enviar:")
     print(json.dumps(payload, indent=2, ensure_ascii=False))
 
@@ -138,3 +172,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
