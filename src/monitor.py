@@ -6,12 +6,17 @@ Se ejecuta despues de src/train.py y src/predict.py dentro del pipeline de
 GitHub Actions. Si SUPABASE_URL / SUPABASE_KEY no estan definidas (por
 ejemplo corriendo local), guarda todo en artifacts/ y no intenta conectarse.
 
-Estrategia de reentrenamiento (simple e interpretable a proposito):
-  - reentrena si accuracy_mean de la corrida actual cae mas de
-    RETRAIN_ACCURACY_DROP puntos por debajo del accuracy_mean historico
-    reciente, o si no hay modelo previo.
-  - los DRIFT_SIGNALS son informativos (se registran siempre) y ademas
-    alimentan esa decision cuando superan su umbral.
+Estrategia de reentrenamiento (pedido explicito de David, 27/09): la
+decision real de si se reentrena el modelo desplegado la toma
+src/train.py (umbral fijo de accuracy, ver RETRAIN_ACCURACY_THRESHOLD ahi)
+y la deja escrita en artifacts/metrics.json bajo "refit_final". Este
+modulo simplemente LEE esa decision para dejarla en pipeline_runs
+(retrained / retrain_reason) -- no la recalcula con una regla distinta,
+para que lo que se ve en Supabase sea exactamente lo que paso.
+
+Los DRIFT_SIGNALS (demanda media semana actual vs anterior, por estacion)
+son informativos y se registran siempre, independientemente de si hubo
+reentrenamiento.
 """
 from __future__ import annotations
 
@@ -26,7 +31,6 @@ import requests
 from src.ingest import load_observations
 
 ARTIFACTS = Path(__file__).resolve().parent.parent / "artifacts"
-RETRAIN_ACCURACY_DROP = 5.0  # puntos porcentuales
 DRIFT_RELATIVE_CHANGE = 0.25  # 25% de cambio en demanda media estacion-hora
 
 
@@ -64,15 +68,6 @@ def detect_data_drift(observations: pd.DataFrame, window_days: int = 7) -> list[
             "triggered": bool(triggered),
         })
     return signals
-
-
-def decide_retrain(current_accuracy: float, history_accuracy: float | None) -> tuple[bool, str]:
-    if history_accuracy is None:
-        return True, "sin corrida previa registrada"
-    drop = history_accuracy - current_accuracy
-    if drop > RETRAIN_ACCURACY_DROP:
-        return True, f"accuracy cayo {drop:.1f} pts vs corrida anterior ({history_accuracy:.1f} -> {current_accuracy:.1f})"
-    return False, f"accuracy estable ({current_accuracy:.1f}, vs {history_accuracy:.1f} anterior)"
 
 
 def _supabase_headers(key: str) -> dict:
@@ -123,13 +118,17 @@ def main():
         raise SystemExit("Corre primero src/train.py (falta artifacts/metrics.json)")
 
     metrics = json.loads(metrics_path.read_text())
-    current_accuracy = metrics["gradient_boosting"]["accuracy_mean"]
+    current_accuracy = metrics["blend_final"]["accuracy_mean"]
+
+    # La decision de reentrenar el modelo desplegado ya la tomo src/train.py
+    # (umbral fijo de accuracy, pedido explicito de David) -- aqui solo se
+    # lee, para que lo que quede en Supabase sea exactamente lo que paso.
+    refit_info = metrics.get("refit_final", {})
+    retrain = refit_info.get("hecho", True)
+    reason = refit_info.get("razon", "sin informacion de refit_final en metrics.json")
 
     history_path = ARTIFACTS / "accuracy_history.json"
     history = json.loads(history_path.read_text()) if history_path.exists() else []
-    last_accuracy = history[-1]["accuracy_mean"] if history else None
-
-    retrain, reason = decide_retrain(current_accuracy, last_accuracy)
 
     observations = load_observations()
     drift_signals = detect_data_drift(observations)
@@ -145,7 +144,7 @@ def main():
     metrics_rows = [
         {"station_id": None, "wape": metrics[m]["wape_mean"], "accuracy": metrics[m]["accuracy_mean"],
          "window_start": None, "window_end": None}
-        for m in ("naive_96", "seasonal_avg", "gradient_boosting")
+        for m in ("naive_96", "seasonal_avg", "gradient_boosting", "blend_final")
     ]
 
     predictions_df = pd.read_csv(predictions_path, dtype={"station_id": "string"}) if predictions_path.exists() else pd.DataFrame()
