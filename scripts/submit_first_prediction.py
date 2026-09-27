@@ -1,4 +1,4 @@
-﻿"""Genera y envia la primera submission de predicciones al reto Pulso TransMi.
+"""Genera y envia la primera submission de predicciones al reto Pulso TransMi.
 
 Flujo:
   1. Consulta GET /v1/forecast-cycles/current para saber el ciclo activo:
@@ -70,6 +70,8 @@ def main() -> None:
 
     bundle = joblib.load(ARTIFACTS / "model_gbr.joblib")
     model, feature_cols = bundle["model"], bundle["features"]
+    seasonal_lookup_ = bundle.get("seasonal_lookup")
+    blend_weight = bundle.get("blend_weight_seasonal", 0.0)
 
     stations, observations, context = load_all()
     obs = observations[observations["observed_at"] <= cutoff]
@@ -100,7 +102,9 @@ def main() -> None:
         # sola vez. horizon_steps 1..4 corresponde a 15/30/45/60 min.
         results_by_step = {
             r["horizon_steps"]: r
-            for r in predict_station(demand_hist, context_row, last_time, model, feature_cols)
+            for r in predict_station(demand_hist, context_row, last_time, model, feature_cols,
+                                      seasonal_lookup=seasonal_lookup_, station_id=station_id,
+                                      blend_weight_seasonal=blend_weight)
         }
 
         for t in station_targets:
@@ -172,4 +176,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
