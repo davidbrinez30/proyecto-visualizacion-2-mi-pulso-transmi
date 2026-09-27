@@ -1,20 +1,20 @@
 {
   "run": {
-    "git_commit": "0577409",
-    "model_version": "gbr@0577409",
-    "data_cutoff": "2026-09-14 14:00:00+00:00",
+    "git_commit": "1df5945",
+    "model_version": "gbr@1df5945",
+    "data_cutoff": "2026-09-14 14:30:00+00:00",
     "status": "success",
     "retrained": false,
-    "retrain_reason": "accuracy estable (86.6, vs 86.6 anterior)"
+    "retrain_reason": "accuracy estable (86.7, vs 86.6 anterior)"
   },
   "drift_signals": [
     {
       "station_id": "02300",
       "signal_type": "demand_mean_shift_7d",
-      "signal_value": 0.042,
+      "signal_value": 0.0418,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 230
+      "run_id": 231
     },
     {
       "station_id": "03000",
@@ -22,91 +22,91 @@
       "signal_value": 0.0095,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 230
+      "run_id": 231
     },
     {
       "station_id": "05000",
       "signal_type": "demand_mean_shift_7d",
-      "signal_value": 0.0386,
+      "signal_value": 0.0407,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 230
+      "run_id": 231
     },
     {
       "station_id": "05100",
       "signal_type": "demand_mean_shift_7d",
-      "signal_value": -0.1791,
+      "signal_value": -0.1849,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 230
+      "run_id": 231
     },
     {
       "station_id": "06000",
       "signal_type": "demand_mean_shift_7d",
-      "signal_value": 0.1121,
+      "signal_value": 0.1157,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 230
+      "run_id": 231
     },
     {
       "station_id": "06111",
       "signal_type": "demand_mean_shift_7d",
-      "signal_value": 0.0766,
+      "signal_value": 0.0762,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 230
+      "run_id": 231
     },
     {
       "station_id": "07105",
       "signal_type": "demand_mean_shift_7d",
-      "signal_value": 0.0633,
+      "signal_value": 0.0644,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 230
+      "run_id": 231
     },
     {
       "station_id": "07107",
       "signal_type": "demand_mean_shift_7d",
-      "signal_value": 0.1278,
+      "signal_value": 0.1304,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 230
+      "run_id": 231
     },
     {
       "station_id": "07111",
       "signal_type": "demand_mean_shift_7d",
-      "signal_value": 0.1666,
+      "signal_value": 0.1751,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 230
+      "run_id": 231
     },
     {
       "station_id": "09000",
       "signal_type": "demand_mean_shift_7d",
-      "signal_value": 0.0134,
+      "signal_value": 0.0128,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 230
+      "run_id": 231
     },
     {
       "station_id": "09122",
       "signal_type": "demand_mean_shift_7d",
-      "signal_value": 0.074,
+      "signal_value": 0.0796,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 230
+      "run_id": 231
     },
     {
       "station_id": "10009",
       "signal_type": "demand_mean_shift_7d",
-      "signal_value": 0.1094,
+      "signal_value": 0.1088,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 230
+      "run_id": 231
     }
   ],
   "supabase": {
     "skipped": false,
-    "run_id": 230
+    "run_id": 231
   }
 }
