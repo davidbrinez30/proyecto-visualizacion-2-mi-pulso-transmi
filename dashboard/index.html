@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pulso TransMi — panel en vivo</title>
+<style>
+:root {
+  --bg-page: #f2efe3;
+  --bg-card: #ffffff;
+  --bg-dark: #12281f;
+  --bg-dark-2: #0c1f17;
+  --ink: #16160f;
+  --ink-secondary: #5c594c;
+  --ink-muted: #918d7d;
+  --hairline: #e3ddc9;
+  --hairline-dark: rgba(255,255,255,0.12);
+  --gold: #c69a2b;
+  --gold-soft: #f1e3b8;
+  --green-accent: #1f6b45;
+  --on-dark: #f3efe0;
+  --on-dark-muted: #a9c2b4;
+  --status-good: #1f8a4c;
+  --status-warning: #e2790f;
+  --status-serious: #c65a2c;
+  --status-critical: #c23b3b;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg-page);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.viz-root { padding: 22px 18px 52px; max-width: 1180px; margin: 0 auto; }
+
+.eyebrow {
+  font-size: 11.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--gold); margin-bottom: 6px;
+}
+header.top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+header.top h1 { font-size: 30px; font-weight: 800; margin: 0 0 6px; letter-spacing: -0.01em; line-height: 1.1; }
+header.top .sub { color: var(--ink-secondary); font-size: 13.5px; max-width: 560px; }
+
+.live-pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 600; color: var(--on-dark);
+  border-radius: 999px; padding: 7px 14px 7px 10px;
+  background: var(--bg-dark);
+  white-space: nowrap;
+}
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #4fd685; animation: pulse 2s infinite; flex: none; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+.btn-refresh {
+  font: inherit; font-size: 12px; font-weight: 700; letter-spacing: .01em;
+  background: var(--bg-card); color: var(--ink); border: 1px solid var(--hairline);
+  border-radius: 999px; padding: 7px 14px; cursor: pointer; margin-left: 8px;
+}
+.btn-refresh:hover { border-color: var(--gold); color: var(--gold); }
+.top-actions { display: flex; align-items: center; }
+
+.hero-row { display: grid; grid-template-columns: 1.15fr repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+@media (max-width: 900px) { .hero-row { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .hero-row { grid-template-columns: 1fr; } }
+
+.hero-dark {
+  background: linear-gradient(155deg, var(--bg-dark) 0%, var(--bg-dark-2) 100%);
+  color: var(--on-dark);
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  min-height: 148px;
+  position: relative;
+  overflow: hidden;
+}
+.hero-dark .eyebrow-row { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--on-dark-muted); }
+.hero-dark .eyebrow-row .dot { width: 6px; height: 6px; border-radius: 50%; background: #4fd685; animation: pulse 2s infinite; }
+.hero-dark .value { font-size: 42px; font-weight: 800; line-height: 1; margin: 10px 0 4px; font-variant-numeric: proportional-nums; }
+.hero-dark .label { font-size: 13px; color: var(--on-dark-muted); }
+.hero-dark .delta { font-size: 12.5px; margin-top: 6px; font-weight: 700; }
+.hero-dark .bar-track { height: 6px; border-radius: 4px; background: rgba(255,255,255,0.14); margin-top: 12px; overflow: hidden; }
+.hero-dark .bar-fill { height: 100%; background: var(--gold); border-radius: 4px; transition: width .4s ease; }
+.delta.up { color: #6fe3a0; }
+.delta.down { color: #f3948c; }
+.delta.flat { color: var(--on-dark-muted); }
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+.stat-tile .value { font-size: 30px; font-weight: 800; line-height: 1; color: var(--ink); font-variant-numeric: proportional-nums; }
+.stat-tile .label { color: var(--ink-secondary); font-size: 12.5px; margin-top: 7px; font-weight: 600; }
+.stat-tile .sub { color: var(--ink-muted); font-size: 12px; margin-top: 3px; }
+
+.card h2 {
+  font-size: 12px; font-weight: 700; color: var(--ink-secondary); margin: 0 0 12px;
+  text-transform: uppercase; letter-spacing: .06em;
+}
+
+.status-row { display: flex; align-items: center; gap: 8px; font-size: 13.5px; margin-bottom: 4px; }
+.status-icon { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.status-icon.good { background: var(--status-good); }
+.status-icon.warning { background: var(--status-warning); }
+.status-icon.serious { background: var(--status-serious); }
+.status-icon.critical { background: var(--status-critical); }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; color: var(--ink-muted); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; padding: 7px 8px; border-bottom: 1px solid var(--hairline); }
+td { padding: 8px 8px; border-bottom: 1px solid var(--hairline); color: var(--ink); font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: none; }
+.muted { color: var(--ink-muted); }
+.section-title { font-size: 16px; font-weight: 800; margin: 28px 0 10px; letter-spacing: -0.01em; }
+.two-col { display: grid; grid-template-columns: 1.3fr 1fr; gap: 12px; }
+@media (max-width: 820px) { .two-col { grid-template-columns: 1fr; } }
+
+.legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 12px; color: var(--ink-secondary); }
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.legend-swatch { width: 10px; height: 10px; border-radius: 2px; }
+
+.bar-label { font-size: 11px; fill: var(--ink-secondary); font-weight: 600; }
+.axis-label { font-size: 10.5px; fill: var(--ink-muted); }
+
+.tooltip {
+  position: fixed; pointer-events: none; z-index: 999;
+  background: var(--ink); color: #fffdf7;
+  font-size: 12px; line-height: 1.5; padding: 7px 10px; border-radius: 8px;
+  transform: translate(-50%, -112%);
+  white-space: nowrap; opacity: 0; transition: opacity .1s;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.22);
+}
+.tooltip b { color: var(--gold-soft); }
+
+.error-banner {
+  background: #fff4ef; border: 1px solid var(--status-critical);
+  color: var(--status-critical); border-radius: 10px; padding: 10px 14px;
+  font-size: 13px; margin-bottom: 14px; display: none; font-weight: 600;
+}
+
+.badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; letter-spacing: .01em; }
+.badge.ok { background: #e3f3e9; color: var(--status-good); }
+.badge.err { background: #fbe9e6; color: var(--status-critical); }
+
+footer.foot { margin-top: 34px; color: var(--ink-muted); font-size: 11.5px; text-align: center; }
+a { color: var(--green-accent); }
+</style>
+</head>
+<body>
+<div class="viz-root">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Proyecto 1 · MLOps · Pulso TransMi</div>
+      <h1>Panel en vivo del pipeline</h1>
+      <div class="sub">Accuracy real, predicciones, drift y estado del reentrenamiento — actualizado en directo desde Supabase.</div>
+    </div>
+    <div class="top-actions">
+      <div class="live-pill"><span class="live-dot"></span><span id="last-poll">conectando…</span></div>
+      <button class="btn-refresh" id="refresh-btn" type="button">Actualizar ahora</button>
+    </div>
+  </header>
+
+  <div class="error-banner" id="error-banner"></div>
+
+  <div class="hero-row" id="hero-stats"></div>
+
+  <div class="two-col">
+    <div class="card">
+      <h2>Accuracy real por corrida (submission_performance)</h2>
+      <div id="accuracy-line"></div>
+      <div class="legend" id="accuracy-legend"></div>
+    </div>
+    <div class="card">
+      <h2>Estado del pipeline</h2>
+      <div id="pipeline-status"></div>
+    </div>
+  </div>
+
+  <div class="two-col" style="margin-top:12px;">
+    <div class="card">
+      <h2>Drift por estación (cambio de demanda semana vs. semana)</h2>
+      <div id="drift-table"></div>
+    </div>
+    <div class="card">
+      <h2>Accuracy real por estación</h2>
+      <div id="station-bars"></div>
+    </div>
+  </div>
+
+  <div class="section-title">Últimas predicciones por estación</div>
+  <div class="card">
+    <div id="predictions-table"></div>
+  </div>
+
+  <div class="tooltip" id="tooltip"></div>
+
+  <footer class="foot">
+    Actualiza cada 25s desde la API REST de Supabase (no es websocket push) · Proyecto Pulso TransMi — MLOps ·
+    <a href="https://pulso-transmi.72-60-245-2.sslip.io" target="_blank" rel="noopener">Portal oficial del reto ↗</a>
+  </footer>
+</div>
+
+<script>
+const SUPABASE_URL = "https://azqudvlltukeeuypivcq.supabase.co";
+const SUPABASE_KEY = "sb_publishable_9-jIuyLuPm_TqJ3KQ1zhAg_gSLIV8H4";
+const REST = SUPABASE_URL + "/rest/v1";
+const POLL_MS = 25000;
+
+const $ = (sel) => document.querySelector(sel);
+const tooltip = $("#tooltip");
+
+function showTooltip(x, y, html) {
+  tooltip.innerHTML = html;
+  tooltip.style.left = x + "px";
+  tooltip.style.top = y + "px";
+  tooltip.style.opacity = "1";
+}
+function hideTooltip() { tooltip.style.opacity = "0"; }
+
+async function sb(path) {
+  const res = await fetch(REST + path, {
+    headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+  });
+  if (!res.ok) throw new Error(path + " -> " + res.status);
+  return res.json();
+}
+
+function fmtPct(v) { return (v === null || v === undefined || isNaN(v)) ? "—" : v.toFixed(1) + "%"; }
+function fmtNum(v) { return (v === null || v === undefined || isNaN(v)) ? "—" : Number(v).toFixed(1); }
+function fmtDate(s) {
+  if (!s) return "—";
+  const d = new Date(s);
+  return d.toLocaleString("es-CO", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+function timeAgo(s) {
+  if (!s) return "—";
+  const diffMs = Date.now() - new Date(s).getTime();
+  const min = Math.round(diffMs / 60000);
+  if (min < 1) return "hace instantes";
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  return `hace ${Math.round(h / 24)} d`;
+}
+
+function statusForAccuracy(acc) {
+  if (acc === null || acc === undefined || isNaN(acc)) return "muted";
+  if (acc >= 85) return "good";
+  if (acc >= 75) return "warning";
+  if (acc >= 60) return "serious";
+  return "critical";
+}
+
+function svg(tag, attrs) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+// ---------- STATE ----------
+let stationNames = {};
+
+// ---------- RENDER: hero stats ----------
+function renderHeroStats(latestAccByRun, latestPipelineRun, driftSignals) {
+  const container = $("#hero-stats");
+  container.innerHTML = "";
+
+  const runs = latestAccByRun;
+  const current = runs.length ? runs[runs.length - 1] : null;
+  const previous = runs.length > 1 ? runs[runs.length - 2] : null;
+  let deltaHtml = "";
+  if (current && previous) {
+    const diff = current.accuracy_mean - previous.accuracy_mean;
+    const cls = diff > 0.15 ? "up" : diff < -0.15 ? "down" : "flat";
+    const arrow = diff > 0.15 ? "▲" : diff < -0.15 ? "▼" : "■";
+    deltaHtml = `<div class="delta ${cls}">${arrow} ${diff >= 0 ? "+" : ""}${diff.toFixed(1)} pts vs. corrida anterior</div>`;
+  }
+
+  const heroCard = document.createElement("div");
+  heroCard.className = "hero-dark";
+  const pct = current ? Math.max(0, Math.min(100, current.accuracy_mean)) : 0;
+  heroCard.innerHTML = `
+    <div class="eyebrow-row"><span class="dot"></span>Accuracy real en vivo</div>
+    <div>
+      <div class="value">${current ? fmtPct(current.accuracy_mean) : "—"}</div>
+      <div class="label">${current ? `${current.n} predicciones evaluadas · ${timeAgo(current.evaluated_at)}` : "sin evaluaciones aún"}</div>
+      ${deltaHtml}
+    </div>
+    <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>`;
+  container.appendChild(heroCard);
+
+  const triggeredCount = driftSignals.filter(d => d.triggered).length;
+  const maxDrift = driftSignals.reduce((m, d) => Math.abs(d.signal_value) > Math.abs(m) ? d.signal_value : m, 0);
+
+  const tiles = [
+    {
+      label: "Reentrenamiento (última corrida)",
+      value: latestPipelineRun ? (latestPipelineRun.retrained ? "SÍ" : "NO") : "—",
+      sub: latestPipelineRun ? (latestPipelineRun.retrain_reason || "") : "sin corridas registradas",
+    },
+    {
+      label: "Drift activado",
+      value: `${triggeredCount} / ${driftSignals.length || 0}`,
+      sub: driftSignals.length ? `estaciones sobre umbral · cambio máximo ${(maxDrift * 100).toFixed(1)}%` : "sin señales de drift",
+    },
+    {
+      label: "Última corrida del pipeline",
+      value: latestPipelineRun ? timeAgo(latestPipelineRun.run_at) : "—",
+      sub: latestPipelineRun ? `${latestPipelineRun.status} · commit ${latestPipelineRun.git_commit}` : "",
+    },
+  ];
+
+  for (const t of tiles) {
+    const card = document.createElement("div");
+    card.className = "card stat-tile";
+    card.innerHTML = `<div class="value">${t.value}</div><div class="label">${t.label}</div><div class="sub">${t.sub}</div>`;
+    container.appendChild(card);
+  }
+}
+
+// ---------- RENDER: accuracy line chart ----------
+function renderAccuracyLine(runs) {
+  const el = $("#accuracy-line");
+  el.innerHTML = "";
+  if (!runs.length) { el.innerHTML = '<p class="muted">Todavía no hay predicciones evaluadas.</p>'; return; }
+
+  const w = 520, h = 220, pad = { l: 34, r: 12, t: 10, b: 24 };
+  const plotW = w - pad.l - pad.r, plotH = h - pad.t - pad.b;
+  const svgEl = svg("svg", { viewBox: `0 0 ${w} ${h}`, width: "100%", height: h, style: "overflow:visible" });
+
+  const n = runs.length;
+  const yMin = 0, yMax = 100;
+  const x = (i) => pad.l + (n === 1 ? plotW / 2 : (i / (n - 1)) * plotW);
+  const y = (v) => pad.t + plotH - ((v - yMin) / (yMax - yMin)) * plotH;
+
+  const grid = "#e3ddc9";
+  const seriesColor = "#1f6b45";
+  const goldColor = "#c69a2b";
+  const surfaceColor = "#ffffff";
+
+  [0, 25, 50, 75, 100].forEach(v => {
+    svgEl.appendChild(svg("line", { x1: pad.l, x2: w - pad.r, y1: y(v), y2: y(v), stroke: grid, "stroke-width": 1 }));
+    const t = svg("text", { x: 4, y: y(v) + 3, class: "axis-label" });
+    t.textContent = v;
+    svgEl.appendChild(t);
+  });
+  // threshold line at 80 (David's retrain threshold) — brand gold, doubles as "benchmark" cue
+  svgEl.appendChild(svg("line", { x1: pad.l, x2: w - pad.r, y1: y(80), y2: y(80), stroke: goldColor, "stroke-width": 1.5, "stroke-dasharray": "4,3" }));
+
+  const pathD = runs.map((r, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(r.accuracy_mean)}`).join(" ");
+  svgEl.appendChild(svg("path", { d: pathD, fill: "none", stroke: seriesColor, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+
+  runs.forEach((r, i) => {
+    const c = svg("circle", { cx: x(i), cy: y(r.accuracy_mean), r: 4, fill: seriesColor, stroke: surfaceColor, "stroke-width": 1.5, style: "cursor:pointer" });
+    c.addEventListener("mousemove", (ev) => {
+      showTooltip(ev.clientX, ev.clientY, `<b>${fmtPct(r.accuracy_mean)}</b><br>${fmtDate(r.evaluated_at)}<br>${r.n} predicciones`);
+    });
+    c.addEventListener("mouseleave", hideTooltip);
+    svgEl.appendChild(c);
+  });
+
+  el.appendChild(svgEl);
+  $("#accuracy-legend").innerHTML = `
+    <div class="legend-item"><span class="legend-swatch" style="background:${seriesColor}"></span>accuracy real (por lote evaluado)</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:${goldColor}"></span>umbral de reentrenamiento (80%)</div>`;
+}
+
+// ---------- RENDER: pipeline status ----------
+function renderPipelineStatus(run) {
+  const el = $("#pipeline-status");
+  if (!run) { el.innerHTML = '<p class="muted">Sin corridas registradas todavía.</p>'; return; }
+  const badgeCls = run.status === "success" ? "ok" : "err";
+  el.innerHTML = `
+    <div class="status-row"><span class="badge ${badgeCls}">${run.status}</span> &nbsp;${timeAgo(run.run_at)} · ${fmtDate(run.run_at)}</div>
+    <table style="margin-top:10px;">
+      <tr><td class="muted">Commit</td><td>${run.git_commit || "—"}</td></tr>
+      <tr><td class="muted">Modelo</td><td>${run.model_version || "—"}</td></tr>
+      <tr><td class="muted">Datos hasta</td><td>${fmtDate(run.data_cutoff)}</td></tr>
+      <tr><td class="muted">Reentrenó</td><td>${run.retrained ? "Sí" : "No"}</td></tr>
+      <tr><td class="muted">Razón</td><td>${run.retrain_reason || "—"}</td></tr>
+    </table>`;
+}
+
+// ---------- RENDER: drift table ----------
+function renderDriftTable(signals) {
+  const el = $("#drift-table");
+  if (!signals.length) { el.innerHTML = '<p class="muted">Sin señales de drift registradas.</p>'; return; }
+  const rows = signals
+    .slice()
+    .sort((a, b) => Math.abs(b.signal_value) - Math.abs(a.signal_value))
+    .map(s => {
+      const pct = s.signal_value * 100;
+      const absPct = Math.abs(pct);
+      const status = s.triggered ? (absPct > 50 ? "critical" : "serious") : (absPct > s.threshold * 100 * 0.6 ? "warning" : "good");
+      const name = stationNames[s.station_id] || s.station_id;
+      return `<tr>
+        <td>${name}</td>
+        <td><span class="status-row" style="margin:0;"><span class="status-icon ${status}"></span>${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%</span></td>
+        <td class="muted">umbral ${(s.threshold * 100).toFixed(0)}%</td>
+        <td>${s.triggered ? '<span class="badge err">activado</span>' : '<span class="badge ok">normal</span>'}</td>
+      </tr>`;
+    }).join("");
+  el.innerHTML = `<table>
+    <thead><tr><th>Estación</th><th>Cambio de demanda (7d vs 7d)</th><th>Umbral</th><th>Estado</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+// ---------- RENDER: per-station accuracy bars ----------
+function renderStationBars(perStation) {
+  const el = $("#station-bars");
+  const entries = Object.entries(perStation).sort((a, b) => b[1].mean - a[1].mean);
+  if (!entries.length) { el.innerHTML = '<p class="muted">Sin datos de accuracy por estación aún.</p>'; return; }
+
+  const w = 480, barH = 22, gap = 8, pad = { l: 90, r: 40, t: 4, b: 4 };
+  const h = entries.length * (barH + gap) + pad.t + pad.b;
+  const plotW = w - pad.l - pad.r;
+  const svgEl = svg("svg", { viewBox: `0 0 ${w} ${h}`, width: "100%", height: h });
+
+  const statusColor = { good: "#1f8a4c", warning: "#e2790f", serious: "#c65a2c", critical: "#c23b3b" };
+
+  entries.forEach(([sid, stat], i) => {
+    const y = pad.t + i * (barH + gap);
+    const bw = Math.max(2, (stat.mean / 100) * plotW);
+    const status = statusForAccuracy(stat.mean);
+    const color = statusColor[status] || statusColor.good;
+    const label = svg("text", { x: 0, y: y + barH / 2 + 4, class: "bar-label" });
+    label.textContent = (stationNames[sid] || sid).slice(0, 14);
+    svgEl.appendChild(label);
+    svgEl.appendChild(svg("rect", { x: pad.l, y, width: plotW, height: barH, rx: 4, fill: "#eee8d6" }));
+    const rect = svg("rect", { x: pad.l, y, width: bw, height: barH, rx: 4, fill: color, style: "cursor:pointer" });
+    rect.addEventListener("mousemove", (ev) => showTooltip(ev.clientX, ev.clientY, `<b>${stationNames[sid] || sid}</b><br>${fmtPct(stat.mean)} · ${stat.n} predicciones`));
+    rect.addEventListener("mouseleave", hideTooltip);
+    svgEl.appendChild(rect);
+    const valLabel = svg("text", { x: pad.l + bw + 6, y: y + barH / 2 + 4, class: "bar-label" });
+    valLabel.textContent = fmtPct(stat.mean);
+    svgEl.appendChild(valLabel);
+  });
+
+  el.innerHTML = "";
+  el.appendChild(svgEl);
+}
+
+// ---------- RENDER: predictions table ----------
+function renderPredictionsTable(predictions) {
+  const el = $("#predictions-table");
+  if (!predictions.length) { el.innerHTML = '<p class="muted">Sin predicciones recientes.</p>'; return; }
+  const rows = predictions.map(p => `
+    <tr>
+      <td>${stationNames[p.station_id] || p.station_id}</td>
+      <td>${p.horizon_steps * 15} min</td>
+      <td>${fmtDate(p.target_at)}</td>
+      <td>${fmtNum(p.predicted_demand)}</td>
+      <td class="muted">${p.model_version || "—"}</td>
+    </tr>`).join("");
+  el.innerHTML = `<table>
+    <thead><tr><th>Estación</th><th>Horizonte</th><th>Hora objetivo</th><th>Demanda prevista</th><th>Modelo</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+// ---------- FETCH + AGGREGATE ----------
+async function refresh() {
+  try {
+    const [stationsRaw, perf, runs, drift, preds] = await Promise.all([
+      sb("/stations?select=station_id,station_name"),
+      sb("/submission_performance?select=station_id,target_at,predicted_demand,actual_demand,accuracy,evaluated_at&order=evaluated_at.desc&limit=800"),
+      sb("/pipeline_runs?select=run_at,git_commit,model_version,data_cutoff,status,retrained,retrain_reason&order=run_at.desc&limit=1"),
+      sb("/drift_signals?select=station_id,signal_type,signal_value,threshold,triggered,run_id&order=run_id.desc&limit=200"),
+      sb("/predictions?select=station_id,target_at,horizon_steps,predicted_demand,model_version,run_id&order=run_id.desc&limit=200"),
+    ]);
+
+    stationNames = {};
+    stationsRaw.forEach(s => stationNames[s.station_id] = s.station_name);
+
+    const buckets = {};
+    perf.forEach(p => {
+      if (p.accuracy === null || p.accuracy === undefined) return;
+      const bucketKey = Math.floor(new Date(p.evaluated_at).getTime() / (10 * 60 * 1000));
+      if (!buckets[bucketKey]) buckets[bucketKey] = { sum: 0, n: 0, evaluated_at: p.evaluated_at };
+      buckets[bucketKey].sum += p.accuracy;
+      buckets[bucketKey].n += 1;
+      if (new Date(p.evaluated_at) > new Date(buckets[bucketKey].evaluated_at)) buckets[bucketKey].evaluated_at = p.evaluated_at;
+    });
+    const runsAcc = Object.values(buckets)
+      .map(b => ({ accuracy_mean: b.sum / b.n, n: b.n, evaluated_at: b.evaluated_at }))
+      .sort((a, b) => new Date(a.evaluated_at) - new Date(b.evaluated_at))
+      .slice(-30);
+
+    const perStation = {};
+    perf.forEach(p => {
+      if (p.accuracy === null || p.accuracy === undefined) return;
+      if (!perStation[p.station_id]) perStation[p.station_id] = { sum: 0, n: 0 };
+      perStation[p.station_id].sum += p.accuracy;
+      perStation[p.station_id].n += 1;
+    });
+    Object.values(perStation).forEach(s => s.mean = s.sum / s.n);
+
+    const latestDriftByStation = {};
+    drift.forEach(d => { if (!(d.station_id in latestDriftByStation)) latestDriftByStation[d.station_id] = d; });
+    const driftSignals = Object.values(latestDriftByStation);
+
+    const seen = new Set();
+    const latestPreds = [];
+    preds.forEach(p => {
+      const key = p.station_id + "|" + p.horizon_steps;
+      if (!seen.has(key)) { seen.add(key); latestPreds.push(p); }
+    });
+    latestPreds.sort((a, b) => (stationNames[a.station_id] || a.station_id).localeCompare(stationNames[b.station_id] || b.station_id) || a.horizon_steps - b.horizon_steps);
+
+    const latestRun = runs[0] || null;
+
+    renderHeroStats(runsAcc, latestRun, driftSignals);
+    renderAccuracyLine(runsAcc);
+    renderPipelineStatus(latestRun);
+    renderDriftTable(driftSignals);
+    renderStationBars(perStation);
+    renderPredictionsTable(latestPreds);
+
+    $("#error-banner").style.display = "none";
+    $("#last-poll").textContent = "actualizado " + new Date().toLocaleTimeString("es-CO");
+  } catch (err) {
+    $("#error-banner").style.display = "block";
+    $("#error-banner").textContent = "Error consultando Supabase: " + err.message;
+    $("#last-poll").textContent = "error de conexión";
+    console.error(err);
+  }
+}
+
+$("#refresh-btn").addEventListener("click", refresh);
+refresh();
+setInterval(refresh, POLL_MS);
+</script>
+</body>
+</html>
