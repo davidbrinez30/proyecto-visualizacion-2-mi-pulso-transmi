@@ -53,6 +53,12 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: python scripts/sync_supabase.py
 
+      - name: Reconstruir data/*.csv COMPLETOS desde Supabase (fuente de verdad)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python scripts/sync_from_supabase.py
+
       - name: Entrenar (siempre reentrena con los datos mas recientes)
         run: python -m src.train
 

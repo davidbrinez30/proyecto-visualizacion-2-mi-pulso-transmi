@@ -43,6 +43,37 @@ def git_commit() -> str:
         return "unknown"
 
 
+def detect_data_gaps(observations: pd.DataFrame, lookback_days: int = 14, max_gap_hours: float = 3.0) -> list[dict]:
+    """Detecta huecos grandes en la serie de cada estacion dentro de los
+    ultimos `lookback_days`, comparando el timestamp esperado (cada 15 min)
+    contra el timestamp real siguiente. Existe por el hueco de 3 dias del
+    28/09 (10-12 sep) que paso desapercibido por semejantes dias: en vez de
+    solo confiar en que fetch_data.py/fetch_stream_observations.py dejen el
+    CSV consistente, esto lo verifica explicitamente en cada corrida y lo
+    deja visible en pipeline_runs.error_message (aunque el status siga
+    'success', para no tumbar el workflow) en vez de descubrirse solo
+    cuando el accuracy ya se desplomo."""
+    obs = observations.copy()
+    cutoff = obs["observed_at"].max() - pd.Timedelta(days=lookback_days)
+    recent = obs.loc[obs["observed_at"] > cutoff].sort_values(["station_id", "observed_at"])
+
+    gaps = []
+    for station_id, sub in recent.groupby("station_id"):
+        deltas = sub["observed_at"].diff()
+        big = deltas[deltas > pd.Timedelta(hours=max_gap_hours)]
+        for idx, gap in big.items():
+            pos = sub.index.get_loc(idx)
+            start = sub["observed_at"].iloc[pos - 1]
+            end = sub["observed_at"].iloc[pos]
+            gaps.append({
+                "station_id": station_id,
+                "gap_start": str(start),
+                "gap_end": str(end),
+                "gap_hours": round(gap.total_seconds() / 3600, 2),
+            })
+    return gaps
+
+
 def detect_data_drift(observations: pd.DataFrame, window_days: int = 7) -> list[dict]:
     """Compara la demanda media por estacion de la ultima ventana contra la
     ventana inmediatamente anterior. Senal simple de "el patron cambio"."""
@@ -132,6 +163,16 @@ def main():
 
     observations = load_observations()
     drift_signals = detect_data_drift(observations)
+    data_gaps = detect_data_gaps(observations)
+
+    error_message = None
+    if data_gaps:
+        resumen = "; ".join(
+            f"{g['station_id']}: {g['gap_hours']}h entre {g['gap_start']} y {g['gap_end']}"
+            for g in data_gaps
+        )
+        error_message = f"HUECO DE DATOS detectado en data/observations.csv: {resumen}"
+        print(f"AVISO: {error_message}")
 
     run_row = {
         "git_commit": git_commit(),
@@ -140,6 +181,7 @@ def main():
         "status": "success",
         "retrained": retrain,
         "retrain_reason": reason,
+        "error_message": error_message,
     }
     metrics_rows = [
         {"station_id": None, "wape": metrics[m]["wape_mean"], "accuracy": metrics[m]["accuracy_mean"],
