@@ -34,6 +34,13 @@ def _headers(key: str) -> dict:
 
 
 def _get_all(rest: str, headers: dict, table: str, select: str, order: str) -> list[dict]:
+    # OJO (28/09): Supabase/PostgREST limita cada respuesta a un maximo fijo
+    # de filas (por defecto 1000) sin importar el `limit` que pidamos -- una
+    # corrida real devolvio solo 1000 filas cuando la tabla tenia 59,868 y
+    # el pipeline entreno con casi nada. La condicion de parada NO puede ser
+    # "recibi menos de lo que pedi" (PAGE_SIZE), porque el servidor puede
+    # recortar cada pagina a su propio tope aunque todavia queden mas datos.
+    # La unica senal confiable de "se acabo" es una pagina vacia.
     rows: list[dict] = []
     offset = 0
     while True:
@@ -43,10 +50,10 @@ def _get_all(rest: str, headers: dict, table: str, select: str, order: str) -> l
         )
         resp.raise_for_status()
         page = resp.json()
-        rows.extend(page)
-        if len(page) < PAGE_SIZE:
+        if not page:
             break
-        offset += PAGE_SIZE
+        rows.extend(page)
+        offset += len(page)
     return rows
 
 
