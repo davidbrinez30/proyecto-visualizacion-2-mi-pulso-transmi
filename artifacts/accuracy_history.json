@@ -1,122 +1,122 @@
 [
   {
-    "git_commit": "e3435f9",
-    "accuracy_mean": 87.38087818019528
+    "git_commit": "a3d741a",
+    "accuracy_mean": 82.82974116402038
   },
   {
-    "git_commit": "efeddbc",
-    "accuracy_mean": 87.38087818019528
+    "git_commit": "b4790ca",
+    "accuracy_mean": 82.82974116402038
   },
   {
-    "git_commit": "341ce7d",
-    "accuracy_mean": 87.42980651258785
+    "git_commit": "9659db1",
+    "accuracy_mean": 82.2009592173289
   },
   {
-    "git_commit": "20c0ebe",
-    "accuracy_mean": 87.42980651258785
+    "git_commit": "a7dced5",
+    "accuracy_mean": 82.2009592173289
   },
   {
-    "git_commit": "2c9d423",
-    "accuracy_mean": 87.43669398189864
+    "git_commit": "6cf76fc",
+    "accuracy_mean": 81.35828771385873
   },
   {
-    "git_commit": "59ab158",
-    "accuracy_mean": 87.43669398189864
+    "git_commit": "7b458f2",
+    "accuracy_mean": 81.35828771385873
   },
   {
-    "git_commit": "4d0f10b",
-    "accuracy_mean": 87.42984584654012
+    "git_commit": "90951ab",
+    "accuracy_mean": 80.03422654545136
   },
   {
-    "git_commit": "882fe00",
-    "accuracy_mean": 87.42984584654012
+    "git_commit": "e1850a1",
+    "accuracy_mean": 80.03422654545136
   },
   {
-    "git_commit": "e962b8a",
-    "accuracy_mean": 87.43983560848305
+    "git_commit": "b4ff822",
+    "accuracy_mean": 76.04945345808949
   },
   {
-    "git_commit": "b4833c3",
-    "accuracy_mean": 87.43983560848305
+    "git_commit": "7c3fd01",
+    "accuracy_mean": 76.04945345808949
   },
   {
-    "git_commit": "f5d8790",
-    "accuracy_mean": 87.47371906287901
+    "git_commit": "736c6ed",
+    "accuracy_mean": 73.89844329191229
   },
   {
-    "git_commit": "034c811",
-    "accuracy_mean": 87.47371906287901
+    "git_commit": "12c7d0a",
+    "accuracy_mean": 73.89844329191229
   },
   {
-    "git_commit": "0ac9745",
-    "accuracy_mean": 87.45166215835047
+    "git_commit": "324e76e",
+    "accuracy_mean": 71.44938399706042
   },
   {
-    "git_commit": "4534df1",
-    "accuracy_mean": 87.45166215835047
+    "git_commit": "e1ec98f",
+    "accuracy_mean": 71.44938399706042
   },
   {
-    "git_commit": "6a7756c",
-    "accuracy_mean": 87.52098876774471
+    "git_commit": "f8a25c3",
+    "accuracy_mean": 68.98652975674341
   },
   {
-    "git_commit": "c70eeb3",
-    "accuracy_mean": 87.52098876774471
+    "git_commit": "bec6a80",
+    "accuracy_mean": 68.98652975674341
   },
   {
-    "git_commit": "1e3855a",
-    "accuracy_mean": 87.64454832767991
+    "git_commit": "6919d2b",
+    "accuracy_mean": 66.24156236313262
   },
   {
-    "git_commit": "7e49b36",
-    "accuracy_mean": 87.64454832767991
+    "git_commit": "8ad65ad",
+    "accuracy_mean": 66.24156236313262
   },
   {
-    "git_commit": "c3085c1",
-    "accuracy_mean": 87.63200293000237
+    "git_commit": "7985d29",
+    "accuracy_mean": 62.77542651256463
   },
   {
-    "git_commit": "7c77a72",
-    "accuracy_mean": 87.63200293000237
+    "git_commit": "380740d",
+    "accuracy_mean": 62.77542651256463
   },
   {
-    "git_commit": "30c8696",
-    "accuracy_mean": 87.4565020563558
+    "git_commit": "88c50cc",
+    "accuracy_mean": 58.962961721020214
   },
   {
-    "git_commit": "f06c68d",
-    "accuracy_mean": 87.4565020563558
+    "git_commit": "f76fac3",
+    "accuracy_mean": 58.962961721020214
   },
   {
-    "git_commit": "f057244",
-    "accuracy_mean": 87.35226729460834
+    "git_commit": "ba17942",
+    "accuracy_mean": 54.40156876915563
   },
   {
-    "git_commit": "b7f47fa",
-    "accuracy_mean": 87.35226729460834
+    "git_commit": "564c792",
+    "accuracy_mean": 54.40156876915563
   },
   {
-    "git_commit": "2d9956f",
-    "accuracy_mean": 87.35226729460834
+    "git_commit": "5cbe7c3",
+    "accuracy_mean": 47.99197884849118
   },
   {
-    "git_commit": "be418d5",
-    "accuracy_mean": 80.9515967287728
+    "git_commit": "1df2f53",
+    "accuracy_mean": 47.99197884849118
   },
   {
-    "git_commit": "b3bf830",
-    "accuracy_mean": 85.4859248202015
+    "git_commit": "be649b7",
+    "accuracy_mean": 39.91066880066976
   },
   {
-    "git_commit": "8e26a65",
-    "accuracy_mean": 85.29453854344011
+    "git_commit": "96c287d",
+    "accuracy_mean": 39.91066880066976
   },
   {
-    "git_commit": "7d68240",
-    "accuracy_mean": 85.29453854344011
+    "git_commit": "96978c7",
+    "accuracy_mean": 34.46894704028168
   },
   {
-    "git_commit": "9702ce5",
-    "accuracy_mean": 85.08614045126389
+    "git_commit": "512c872",
+    "accuracy_mean": 34.46894704028168
   }
 ]
