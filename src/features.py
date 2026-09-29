@@ -100,7 +100,22 @@ def build_multihorizon_frame(observations: pd.DataFrame, context: pd.DataFrame) 
     la hora que se esta prediciendo; las features de ancla (anchor_*) se
     calculan sobre el momento t, siempre con datos reales.
     """
-    merged = observations.merge(context, on="observed_at", how="left")
+    # OJO (28/09): un merge EXACTO por observed_at deja NaN en las columnas
+    # de contexto para cualquier fila mas nueva que la ultima fecha que
+    # tenga context.csv. El 28/09 context.csv se quedo fijo en el 9 de
+    # sept (el dataset de clima/eventos del reto no se sigue actualizando)
+    # mientras observations.csv (ya arreglado, ver sync_from_supabase.py)
+    # sigue creciendo -- la ventana de validacion (VALIDATION_DAYS=7 en
+    # src/train.py) cayo COMPLETA despues del 9 de sept, asi que el dropna
+    # de mas abajo se comia TODAS las filas de validacion (0 filas) y
+    # GradientBoostingRegressor tronaba al predecir con un array vacio.
+    # merge_asof con direction="backward" arrastra el ultimo contexto
+    # conocido hacia adelante en vez de dejar NaN -- sigue sin usar
+    # informacion futura (nunca mira un context_row posterior al ancla),
+    # asi que el backtesting temporal sigue siendo valido.
+    merged = pd.merge_asof(
+        observations.sort_values("observed_at"), context, on="observed_at", direction="backward"
+    )
     merged = merged.sort_values(["station_id", "observed_at"]).reset_index(drop=True)
     merged = add_anchor_features(merged)
 
