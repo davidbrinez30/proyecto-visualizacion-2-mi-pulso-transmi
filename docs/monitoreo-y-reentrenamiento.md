@@ -39,7 +39,7 @@ envía y evalúa. Evidencia por corrida:
 estación, el error de cada candidato en las últimas 2 h y reparte pesos
 ∝ (1/WAPE)³. Candidatos: perfil histórico × nivel de los últimos 30 min,
 perfil de 7 días × nivel de 45 min, persistencia, tendencia amortiguada,
-mismo horario de ayer escalado y el GBR. Así el sistema se adapta a cambios
+mismo horario de ayer escalado, un detector automático de ciclo (periodo dominante de 2-12 h por autocorrelación de las últimas 12 h; agregado el 1/oct cuando la demanda pasó a un ciclo de 4 h) y el GBR. Así el sistema se adapta a cambios
 de nivel o de forma en pocas horas sin gastar cómputo.
 
 **Reentrenamiento del GBR (costoso), solo si:**
@@ -93,6 +93,7 @@ con el accuracy real que obtuvo el sistema anterior en `submission_performance`:
 | 17 sep 12-18 h | 55.8% | 88.0% |
 | 18 sep 00-06 h | 52.9% | 82.3% |
 | 18 sep 06-10 h (cambio fuerte de forma) | 33.9% | 53.4% |
+| 18 sep 12-24 h (nuevo régimen: ciclo de 4 h) | ~55% (ensamble sin detector de ciclo, en producción) | 80.7% (con `ciclo_detectado`) |
 
 El último bloque muestra el límite: ante un cambio brusco de distribución
 horaria, todo pronosticador pierde precisión hasta que hay datos del nuevo

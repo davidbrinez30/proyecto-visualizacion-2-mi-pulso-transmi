@@ -21,6 +21,9 @@ Candidatos (todos usan SOLO datos observados hasta el ancla t):
   - persistencia:       ultimo valor observado
   - tendencia:          ultimo valor + pendiente de los ultimos 15 min, amortiguada (cambios rapidos de forma)
   - ayer_escalado:      mismo horario de ayer x (ultimos 30 min / mismos 30 min de ayer)
+  - ciclo_detectado:    detecta el periodo dominante de las ultimas 12 h (2-12 h, por autocorrelacion)
+                        y repite ese ciclo escalado al nivel actual. Existe porque en la fase de drift
+                        del 18/sep la demanda paso a un ciclo de 4 h que ningun perfil diario captura.
   - gbr:                Gradient Boosting de horizonte directo (src/features.py)
 
 Simulacion paso a paso cada 30 min con datos reales (solo datos observados
@@ -29,6 +32,8 @@ contra el accuracy real del sistema anterior (submission_performance):
   16 sep 12-18 h (inicio del drift)   65.7%  ->  86.8%
   17 sep 12-18 h                      55.8%  ->  88.0%
   18 sep 06-10 h (cambio fuerte)      33.9%  ->  53.4%
+Regimen de ciclo de 4 h (18 sep 12-24 h): ensamble sin ciclo_detectado 55.1%
+(igual a lo observado en produccion) -> con ciclo_detectado 80.7%.
 Detalle en docs/monitoreo-y-reentrenamiento.md.
 """
 from __future__ import annotations
@@ -38,9 +43,11 @@ import pandas as pd
 
 from src.features import FEATURE_COLUMNS, HORIZONS, build_multihorizon_frame
 
-CANDIDATES = ("nivel_30m", "nivel_45m_perfil7d", "persistencia", "tendencia", "ayer_escalado", "gbr")
+CANDIDATES = ("nivel_30m", "nivel_45m_perfil7d", "persistencia", "tendencia", "ayer_escalado", "ciclo_detectado", "gbr")
 WEIGHT_WINDOW_HOURS = 2     # ventana de error reciente para los pesos: corta para cambiar rapido de candidato
 WEIGHT_POWER = 3            # peso ~ (1 / WAPE)^3: premia fuerte al que va mejor
+CYCLE_LAGS = range(8, 49)    # periodos candidatos: 2 h a 12 h (en pasos de 15 min)
+CYCLE_WINDOW = 48            # autocorrelacion medida sobre las ultimas 12 h
 TREND_DAMPING = 0.8         # tendencia amortiguada: P(t) + pendiente * (0.8 + 0.8^2 + ...)
 MIN_POINTS_FOR_WEIGHT = 8   # minimo de errores observados para confiar en el WAPE de un candidato
 RATIO_CLIP = (0.05, 20.0)
@@ -118,8 +125,32 @@ def candidate_forecasts(P: pd.DataFrame, lookups: dict, anchors: pd.DatetimeInde
     r3_7d = _ratio(A.rolling(3, min_periods=1).sum(), E7.rolling(3, min_periods=1).sum())
     r_ayer = _ratio(A.rolling(2, min_periods=1).sum(), A.shift(96).rolling(2, min_periods=1).sum())
 
+    # periodo dominante en cada ancla, usando solo datos <= ancla
+    corr = {}
+    for L in CYCLE_LAGS:
+        corr[L] = A.rolling(CYCLE_WINDOW, min_periods=CYCLE_WINDOW // 2).corr(A.shift(L)).mean(axis=1)
+    corr = pd.DataFrame(corr)
+    valid_rows = corr.notna().any(axis=1)
+    best_lag = corr.fillna(-np.inf).idxmax(axis=1).where(valid_rows).reindex(anchors)
+    pos = {ts: i for i, ts in enumerate(full_ix)}
+    Av = A.values
+
     out = {c: {} for c in CANDIDATES}
     for h in HORIZONS:
+        cyc = np.full((len(anchors), len(cols)), np.nan)
+        for k, t in enumerate(anchors):
+            L = best_lag.iloc[k]
+            if pd.isna(L):
+                continue
+            L = int(L); i = pos[t]
+            if i - L - 1 < 0:
+                continue
+            base = Av[i + h - L]
+            num = np.nansum(Av[i - 1:i + 1], axis=0)
+            den = np.nansum(Av[i - 1 - L:i + 1 - L], axis=0)
+            r = np.where(den > 0, num / np.where(den > 0, den, 1), 1.0)
+            cyc[k] = base * np.clip(r, *RATIO_CLIP)
+        out["ciclo_detectado"][h] = pd.DataFrame(cyc, index=anchors, columns=cols)
         tgt = anchors + h * PERIOD
         out["nivel_30m"][h] = pd.DataFrame(Ef.reindex(tgt).values * r2_full.reindex(anchors).values,
                                            index=anchors, columns=cols)
