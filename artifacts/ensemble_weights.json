@@ -1,113 +1,113 @@
 {
-  "data_cutoff": "2026-09-19 06:00:00+00:00",
+  "data_cutoff": "2026-09-19 06:30:00+00:00",
   "pesos_por_estacion": {
     "02300": {
-      "nivel_30m": 0.0061,
-      "nivel_45m_perfil7d": 0.0108,
-      "persistencia": 0.0182,
-      "tendencia": 0.0325,
-      "ayer_escalado": 0.0089,
-      "ciclo_detectado": 0.8601,
-      "gbr": 0.0634
+      "nivel_30m": 0.0058,
+      "nivel_45m_perfil7d": 0.0147,
+      "persistencia": 0.0165,
+      "tendencia": 0.0346,
+      "ayer_escalado": 0.0171,
+      "ciclo_detectado": 0.8727,
+      "gbr": 0.0385
     },
     "03000": {
-      "nivel_30m": 0.0127,
-      "nivel_45m_perfil7d": 0.0251,
-      "persistencia": 0.0239,
-      "tendencia": 0.0412,
-      "ayer_escalado": 0.0256,
-      "ciclo_detectado": 0.849,
-      "gbr": 0.0225
+      "nivel_30m": 0.0155,
+      "nivel_45m_perfil7d": 0.0406,
+      "persistencia": 0.0337,
+      "tendencia": 0.0359,
+      "ayer_escalado": 0.03,
+      "ciclo_detectado": 0.8082,
+      "gbr": 0.0362
     },
     "05000": {
-      "nivel_30m": 0.0011,
-      "nivel_45m_perfil7d": 0.0014,
-      "persistencia": 0.0009,
-      "tendencia": 0.0025,
-      "ayer_escalado": 0.0024,
-      "ciclo_detectado": 0.9861,
-      "gbr": 0.0056
+      "nivel_30m": 0.0023,
+      "nivel_45m_perfil7d": 0.0028,
+      "persistencia": 0.0024,
+      "tendencia": 0.0078,
+      "ayer_escalado": 0.0145,
+      "ciclo_detectado": 0.9634,
+      "gbr": 0.0068
     },
     "05100": {
-      "nivel_30m": 0.0153,
-      "nivel_45m_perfil7d": 0.0071,
-      "persistencia": 0.0133,
-      "tendencia": 0.0353,
-      "ayer_escalado": 0.0017,
-      "ciclo_detectado": 0.9255,
-      "gbr": 0.0019
+      "nivel_30m": 0.0024,
+      "nivel_45m_perfil7d": 0.001,
+      "persistencia": 0.0023,
+      "tendencia": 0.0099,
+      "ayer_escalado": 0.0005,
+      "ciclo_detectado": 0.9818,
+      "gbr": 0.0021
     },
     "06000": {
-      "nivel_30m": 0.0241,
-      "nivel_45m_perfil7d": 0.0203,
-      "persistencia": 0.0524,
-      "tendencia": 0.1072,
-      "ayer_escalado": 0.0034,
-      "ciclo_detectado": 0.5088,
-      "gbr": 0.2837
+      "nivel_30m": 0.0254,
+      "nivel_45m_perfil7d": 0.0277,
+      "persistencia": 0.0414,
+      "tendencia": 0.085,
+      "ayer_escalado": 0.0045,
+      "ciclo_detectado": 0.7624,
+      "gbr": 0.0537
     },
     "06111": {
       "nivel_30m": 0.0026,
       "nivel_45m_perfil7d": 0.0085,
-      "persistencia": 0.0084,
-      "tendencia": 0.0255,
-      "ayer_escalado": 0.0084,
-      "ciclo_detectado": 0.9385,
-      "gbr": 0.0082
+      "persistencia": 0.0077,
+      "tendencia": 0.0203,
+      "ayer_escalado": 0.009,
+      "ciclo_detectado": 0.9433,
+      "gbr": 0.0087
     },
     "07105": {
-      "nivel_30m": 0.0091,
-      "nivel_45m_perfil7d": 0.0121,
-      "persistencia": 0.0052,
-      "tendencia": 0.0163,
-      "ayer_escalado": 0.053,
-      "ciclo_detectado": 0.8717,
-      "gbr": 0.0326
+      "nivel_30m": 0.0071,
+      "nivel_45m_perfil7d": 0.0111,
+      "persistencia": 0.0101,
+      "tendencia": 0.0348,
+      "ayer_escalado": 0.1667,
+      "ciclo_detectado": 0.7466,
+      "gbr": 0.0236
     },
     "07107": {
-      "nivel_30m": 0.109,
-      "nivel_45m_perfil7d": 0.0407,
-      "persistencia": 0.0329,
-      "tendencia": 0.0111,
-      "ayer_escalado": 0.0456,
-      "ciclo_detectado": 0.7506,
-      "gbr": 0.01
+      "nivel_30m": 0.0359,
+      "nivel_45m_perfil7d": 0.0117,
+      "persistencia": 0.0099,
+      "tendencia": 0.0043,
+      "ayer_escalado": 0.0212,
+      "ciclo_detectado": 0.9051,
+      "gbr": 0.012
     },
     "07111": {
-      "nivel_30m": 0.0049,
+      "nivel_30m": 0.0033,
       "nivel_45m_perfil7d": 0.0032,
-      "persistencia": 0.01,
-      "tendencia": 0.0311,
-      "ayer_escalado": 0.0007,
-      "ciclo_detectado": 0.5901,
-      "gbr": 0.3599
+      "persistencia": 0.006,
+      "tendencia": 0.021,
+      "ayer_escalado": 0.0006,
+      "ciclo_detectado": 0.8071,
+      "gbr": 0.1589
     },
     "09000": {
-      "nivel_30m": 0.0162,
-      "nivel_45m_perfil7d": 0.0198,
-      "persistencia": 0.0306,
-      "tendencia": 0.1246,
-      "ayer_escalado": 0.0807,
-      "ciclo_detectado": 0.7037,
-      "gbr": 0.0245
+      "nivel_30m": 0.0219,
+      "nivel_45m_perfil7d": 0.0296,
+      "persistencia": 0.0458,
+      "tendencia": 0.2097,
+      "ayer_escalado": 0.1421,
+      "ciclo_detectado": 0.5128,
+      "gbr": 0.0382
     },
     "09122": {
-      "nivel_30m": 0.0025,
-      "nivel_45m_perfil7d": 0.0015,
-      "persistencia": 0.0022,
-      "tendencia": 0.0068,
-      "ayer_escalado": 0.0016,
-      "ciclo_detectado": 0.9776,
-      "gbr": 0.0079
+      "nivel_30m": 0.0048,
+      "nivel_45m_perfil7d": 0.0046,
+      "persistencia": 0.0047,
+      "tendencia": 0.0136,
+      "ayer_escalado": 0.019,
+      "ciclo_detectado": 0.9433,
+      "gbr": 0.0099
     },
     "10009": {
-      "nivel_30m": 0.0142,
-      "nivel_45m_perfil7d": 0.027,
-      "persistencia": 0.0144,
-      "tendencia": 0.0182,
-      "ayer_escalado": 0.0816,
-      "ciclo_detectado": 0.8438,
-      "gbr": 0.0009
+      "nivel_30m": 0.006,
+      "nivel_45m_perfil7d": 0.0183,
+      "persistencia": 0.0039,
+      "tendencia": 0.0042,
+      "ayer_escalado": 0.0841,
+      "ciclo_detectado": 0.8821,
+      "gbr": 0.0014
     }
   }
 }
