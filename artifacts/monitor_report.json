@@ -1,7 +1,7 @@
 {
   "run": {
-    "git_commit": "fde9168",
-    "model_version": "gbr@fde9168",
+    "git_commit": "741bddd",
+    "model_version": "gbr@741bddd",
     "data_cutoff": "2026-09-18 09:30:00+00:00",
     "status": "success",
     "retrained": true,
@@ -15,7 +15,7 @@
       "signal_value": 0.4688,
       "threshold": 0.25,
       "triggered": true,
-      "run_id": 586
+      "run_id": 587
     },
     {
       "station_id": "03000",
@@ -23,7 +23,7 @@
       "signal_value": -0.1085,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 586
+      "run_id": 587
     },
     {
       "station_id": "05000",
@@ -31,7 +31,7 @@
       "signal_value": 0.7218,
       "threshold": 0.25,
       "triggered": true,
-      "run_id": 586
+      "run_id": 587
     },
     {
       "station_id": "05100",
@@ -39,7 +39,7 @@
       "signal_value": -0.4544,
       "threshold": 0.25,
       "triggered": true,
-      "run_id": 586
+      "run_id": 587
     },
     {
       "station_id": "06000",
@@ -47,7 +47,7 @@
       "signal_value": 0.1928,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 586
+      "run_id": 587
     },
     {
       "station_id": "06111",
@@ -55,7 +55,7 @@
       "signal_value": 0.1118,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 586
+      "run_id": 587
     },
     {
       "station_id": "07105",
@@ -63,7 +63,7 @@
       "signal_value": 0.0322,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 586
+      "run_id": 587
     },
     {
       "station_id": "07107",
@@ -71,7 +71,7 @@
       "signal_value": 0.1097,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 586
+      "run_id": 587
     },
     {
       "station_id": "07111",
@@ -79,7 +79,7 @@
       "signal_value": 0.3921,
       "threshold": 0.25,
       "triggered": true,
-      "run_id": 586
+      "run_id": 587
     },
     {
       "station_id": "09000",
@@ -87,7 +87,7 @@
       "signal_value": 0.0781,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 586
+      "run_id": 587
     },
     {
       "station_id": "09122",
@@ -95,7 +95,7 @@
       "signal_value": 0.2201,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 586
+      "run_id": 587
     },
     {
       "station_id": "10009",
@@ -103,11 +103,11 @@
       "signal_value": -0.0135,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 586
+      "run_id": 587
     }
   ],
   "supabase": {
     "skipped": false,
-    "run_id": 586
+    "run_id": 587
   }
 }
