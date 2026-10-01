@@ -176,16 +176,21 @@ def main():
 
     run_row = {
         "git_commit": git_commit(),
-        "model_version": f"gbr@{git_commit()}",
+        "model_version": f"ens-{metrics.get('modelo_desplegado', 'gbr')}@{git_commit()}",
         "data_cutoff": str(observations["observed_at"].max()),
         "status": "success",
         "retrained": retrain,
         "retrain_reason": reason,
         "error_message": error_message,
     }
+    # Ventana de monitoreo de src/train.py (ultimas monitor_hours, evaluacion
+    # temporal sin informacion futura). Orden fijo de filas:
+    # naive_96, seasonal_avg, gradient_boosting, blend_final (= ensamble desplegado).
+    w_end = metrics.get("data_cutoff")
+    w_start = (str(pd.Timestamp(w_end) - pd.Timedelta(hours=metrics.get("monitor_hours", 24))) if w_end else None)
     metrics_rows = [
-        {"station_id": None, "wape": metrics[m]["wape_mean"], "accuracy": metrics[m]["accuracy_mean"],
-         "window_start": None, "window_end": None}
+        {"station_id": None, "wape": metrics[m].get("wape_mean"), "accuracy": metrics[m].get("accuracy_mean"),
+         "window_start": w_start, "window_end": w_end}
         for m in ("naive_96", "seasonal_avg", "gradient_boosting", "blend_final")
     ]
 

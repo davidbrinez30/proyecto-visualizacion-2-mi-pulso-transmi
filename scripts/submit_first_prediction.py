@@ -34,7 +34,7 @@ import pandas as pd
 import requests
 
 from src.ingest import load_all
-from src.predict import predict_station
+from src.ensemble import live_forecast
 
 ARTIFACTS = Path(__file__).resolve().parent.parent / "artifacts"
 BASE_URL = os.environ.get("PULSO_API_URL", "https://pulso-transmi.72-60-245-2.sslip.io").rstrip("/")
@@ -69,70 +69,37 @@ def main() -> None:
     targets = cycle["targets"]
 
     bundle = joblib.load(ARTIFACTS / "model_gbr.joblib")
-    model, feature_cols = bundle["model"], bundle["features"]
-    seasonal_lookup_ = bundle.get("seasonal_lookup")
-    blend_weight = bundle.get("blend_weight_seasonal", 0.0)
-
     stations, observations, context = load_all()
     obs = observations[observations["observed_at"] <= cutoff]
-    ctx = context[context["observed_at"] <= cutoff].sort_values("observed_at")
-    if ctx.empty:
-        raise SystemExit("No hay contexto (clima/eventos) disponible hasta el data_cutoff del ciclo.")
-    last_context = ctx.iloc[-1]
-    context_row = {c: last_context[c] for c in ("rain_mm", "temperature_c", "event_intensity")}
+    if obs.empty:
+        raise SystemExit("Sin observaciones historicas antes del data_cutoff del ciclo.")
 
-    # Agrupa los targets por estacion para llamar predict_station una sola
-    # vez por estacion (calcula los 4 horizontes de una) en vez de una vez
-    # por target, que era el bug: antes se llamaba por cada target y se
-    # exigia que el horizonte fuera siempre 15 min.
-    targets_by_station: dict[str, list[dict]] = {}
-    for t in targets:
-        targets_by_station.setdefault(t["station_id"], []).append(t)
+    # Ensamble adaptativo (src/ensemble.py): usa SOLO observaciones <= data_cutoff
+    # del ciclo, tanto para los pronosticos como para los pesos por estacion.
+    # Si el GBR vigente se entreno con datos POSTERIORES al corte del ciclo,
+    # no se usa en esta entrega (contrato: solo informacion hasta el corte);
+    # el ensamble sigue con los candidatos estadisticos.
+    use_bundle = bundle
+    train_cutoff = bundle.get("train_cutoff") if isinstance(bundle, dict) else None
+    if train_cutoff is not None and pd.Timestamp(train_cutoff) > cutoff:
+        print(f"AVISO: el GBR se entreno hasta {train_cutoff} (> corte {cutoff}); se excluye de esta entrega.")
+        use_bundle = {**bundle, "model": None}
+    preds_df, _weights = live_forecast(obs, context, use_bundle, cutoff=cutoff)
+    by_key = {(r.station_id, pd.Timestamp(r.target_at).tz_convert("UTC")): r.predicted_demand
+              for r in preds_df.itertuples()}
 
     predictions = []
     skipped = []
-    for station_id, station_targets in targets_by_station.items():
-        grp = obs[obs["station_id"] == station_id].sort_values("observed_at")
-        if grp.empty:
-            raise SystemExit(f"Sin observaciones historicas para la estacion {station_id} antes del data_cutoff.")
-        demand_hist = pd.Series(grp["demand"].values, index=grp["observed_at"].values)
-        last_time = grp["observed_at"].max()
-
-        # Los 4 horizontes (15/30/45/60 min) de esta estacion, calculados una
-        # sola vez. horizon_steps 1..4 corresponde a 15/30/45/60 min.
-        results_by_step = {
-            r["horizon_steps"]: r
-            for r in predict_station(demand_hist, context_row, last_time, model, feature_cols,
-                                      seasonal_lookup=seasonal_lookup_, station_id=station_id,
-                                      blend_weight_seasonal=blend_weight)
-        }
-
-        for t in station_targets:
-            expected_target_at = pd.Timestamp(t["target_at"])
-            horizon_min = t["horizon_minutes"]
-
-            if horizon_min % 15 != 0:
-                skipped.append((station_id, horizon_min, "horizonte no es multiplo de 15 min"))
-                continue
-            step = horizon_min // 15
-            result = results_by_step.get(step)
-            if result is None:
-                skipped.append((station_id, horizon_min, f"predict_station no calculo el paso {step} (solo calcula hasta 60 min)"))
-                continue
-
-            computed_target_at = pd.Timestamp(result["target_at"])
-            if computed_target_at.tz_convert("UTC") != expected_target_at.tz_convert("UTC"):
-                skipped.append((
-                    station_id, horizon_min,
-                    f"target_at calculado ({computed_target_at}) no coincide con el esperado ({expected_target_at})",
-                ))
-                continue
-
-            predictions.append({
-                "station_id": station_id,
-                "target_at": t["target_at"],
-                "value": result["predicted_demand"],
-            })
+    for t in targets:
+        station_id = str(t["station_id"])
+        horizon_min = t["horizon_minutes"]
+        expected_target_at = pd.Timestamp(t["target_at"]).tz_convert("UTC")
+        value = by_key.get((station_id, expected_target_at))
+        if value is None:
+            skipped.append((station_id, horizon_min,
+                            f"no hay prediccion para target_at {expected_target_at} (ultimo dato: {obs['observed_at'].max()})"))
+            continue
+        predictions.append({"station_id": station_id, "target_at": t["target_at"], "value": float(value)})
 
     if skipped:
         print(f"\nAVISO: {len(skipped)} targets omitidos (no se pudieron predecir):")
@@ -150,7 +117,7 @@ def main() -> None:
         "client_run_id": client_run_id,
         "data_cutoff": cycle["data_cutoff"],
         "model": {
-            "version": f"gbr-{commit}",
+            "version": f"ens-{bundle.get('model_id', 'gbr')}",
             "trained_at": None,
             "training_data_end": cycle["data_cutoff"],
             "git_commit": commit if commit != "unknown" and len(commit) >= 7 else None,

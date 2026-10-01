@@ -35,6 +35,24 @@ ROLLING_WINDOWS = (4, 96)  # 1h, 1 dia
 # se actualiza solo si el patron cambia (drift).
 BLEND_WEIGHT_SEASONAL = 0.85
 
+# --- Ajuste de NIVEL reciente (fase de drift, 30/09) ---
+# El promedio estacional por si solo es un perfil historico FIJO: cuando la
+# demanda de una estacion cambia de nivel (la fase de drift que anuncio el
+# profesor el 28/09), el perfil tarda semanas en enterarse. Medido con
+# submission_performance real: desde el 16/sep 12:00 (tiempo del reto) el
+# accuracy cayo a ~60%, con estaciones sub-predichas a la mitad (05000,
+# 02300) y otras sobre-predichas 2-4x (03000, 05100).
+# Solucion: se conserva la FORMA del perfil estacional (hora/dia), pero se
+# re-escala por estacion con el nivel real de los ultimos
+# LEVEL_WINDOW_POINTS periodos:  pred = perfil(target) * real_reciente / perfil_reciente.
+# Backtest temporal con datos reales (solo datos disponibles al corte):
+#   - antes del drift (12-16 sep): 76.7% (mezcla anterior) -> 82.9%
+#   - durante el drift (16-18 sep): 62.1% (mezcla anterior) -> 84.7%
+# LEVEL_WINDOW_POINTS=3 (45 min) salio entre los mejores del barrido
+# (0.25h..24h); ventanas largas (6-24h) reaccionan tarde al drift.
+LEVEL_WINDOW_POINTS = 3
+LEVEL_RATIO_CLIP = (0.05, 20.0)  # amplio a proposito: 05100 cayo a ~1/4 de su nivel historico
+
 
 def seasonal_lookup(observations: pd.DataFrame) -> pd.Series:
     """Promedio historico de demanda por (station_id, dow, hour, minute),
@@ -55,6 +73,64 @@ def seasonal_value(lookup: pd.Series, station_id: str, target_at: pd.Timestamp, 
     key = (station_id, target_at.dayofweek, target_at.hour, target_at.minute)
     value = lookup.get(key)
     return float(value) if value is not None and not pd.isna(value) else float(fallback)
+
+
+def _as_utc_series(demand_hist: pd.Series) -> pd.Series:
+    """Garantiza indice DatetimeIndex tz-aware en UTC. src/predict.py y
+    submit_first_prediction.py construyen demand_hist con `.values`, lo que
+    deja el indice SIN zona horaria; buscar ahi un Timestamp con zona (UTC)
+    fallaba en silencio y devolvia el valor por defecto -- bug encontrado el
+    30/09: en produccion anchor_lag_4/96/672 eran SIEMPRE iguales a
+    anchor_value (entrenamiento y produccion veian features distintas)."""
+    idx = pd.DatetimeIndex(demand_hist.index)
+    idx = idx.tz_localize("UTC") if idx.tz is None else idx.tz_convert("UTC")
+    return pd.Series(demand_hist.values, index=idx)
+
+
+def _as_utc_ts(ts) -> pd.Timestamp:
+    ts = pd.Timestamp(ts)
+    return ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
+
+
+def level_ratio_for_station(demand_hist: pd.Series, lookup: pd.Series, station_id: str,
+                            last_time, n: int = LEVEL_WINDOW_POINTS) -> float:
+    """Nivel real reciente / nivel esperado por el perfil estacional, sobre
+    los ultimos n periodos hasta last_time (inclusive). Solo usa datos ya
+    observados al momento de predecir. Si no hay perfil para esos periodos,
+    devuelve 1.0 (sin ajuste)."""
+    hist = _as_utc_series(demand_hist)
+    last_time = _as_utc_ts(last_time)
+    act_sum = exp_sum = 0.0
+    for k in range(n):
+        t = last_time - pd.Timedelta(minutes=15 * k)
+        act = hist.get(t)
+        exp = lookup.get((station_id, t.dayofweek, t.hour, t.minute))
+        if act is None or exp is None or pd.isna(act) or pd.isna(exp):
+            continue
+        act_sum += float(act)
+        exp_sum += float(exp)
+    if exp_sum <= 0:
+        return 1.0
+    return float(np.clip(act_sum / exp_sum, *LEVEL_RATIO_CLIP))
+
+
+def level_ratio_frame(observations: pd.DataFrame, lookup: pd.Series, n: int = LEVEL_WINDOW_POINTS) -> pd.DataFrame:
+    """Version vectorizada de level_ratio_for_station para TODAS las filas
+    (station_id, observed_at) -- la usa src/train.py para validar la mezcla
+    con ajuste de nivel exactamente igual a como se predice en produccion."""
+    obs = observations[["station_id", "observed_at", "demand"]].sort_values(["station_id", "observed_at"]).copy()
+    ts = obs["observed_at"]
+    keys = pd.MultiIndex.from_arrays([obs["station_id"], ts.dt.dayofweek, ts.dt.hour, ts.dt.minute])
+    obs["expected"] = lookup.reindex(keys).values
+    valid = obs["expected"].notna() & obs["demand"].notna()
+    obs["act_v"] = obs["demand"].where(valid, 0.0)
+    obs["exp_v"] = obs["expected"].where(valid, 0.0)
+    g = obs.groupby("station_id")
+    act_sum = g["act_v"].rolling(n, min_periods=1).sum().reset_index(level=0, drop=True)
+    exp_sum = g["exp_v"].rolling(n, min_periods=1).sum().reset_index(level=0, drop=True)
+    ratio = (act_sum / exp_sum.where(exp_sum > 0)).clip(*LEVEL_RATIO_CLIP).fillna(1.0)
+    obs["level_ratio"] = ratio
+    return obs[["station_id", "observed_at", "level_ratio"]]
 
 
 def add_calendar_features(df: pd.DataFrame, time_col: str = "observed_at") -> pd.DataFrame:
@@ -139,6 +215,8 @@ def anchor_features_for_station(demand_hist: pd.Series, context_row: dict, last_
     (usada por src/predict.py), operando sobre la serie historica real de
     esa estacion (demand_hist, indexada por observed_at) hasta last_time.
     """
+    demand_hist = _as_utc_series(demand_hist)
+    last_time = _as_utc_ts(last_time)
     feat = dict(context_row)
     feat["anchor_value"] = float(demand_hist.iloc[-1])
     for lag in ANCHOR_LAGS:

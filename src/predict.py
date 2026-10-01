@@ -33,7 +33,7 @@ from pathlib import Path
 import joblib
 import pandas as pd
 
-from src.features import HORIZONS, add_calendar_features, anchor_features_for_station, seasonal_value
+from src.features import HORIZONS, add_calendar_features, anchor_features_for_station, level_ratio_for_station, seasonal_value
 from src.ingest import load_all
 
 ARTIFACTS = Path(__file__).resolve().parent.parent / "artifacts"
@@ -50,7 +50,7 @@ def git_commit() -> str:
 def predict_station(demand_hist: pd.Series, context_row: dict, last_time: pd.Timestamp,
                      model, feature_cols: list[str],
                      seasonal_lookup=None, station_id: str | None = None,
-                     blend_weight_seasonal: float = 0.0) -> list[dict]:
+                     blend_weight_seasonal: float = 0.0, level_adjust: bool = False) -> list[dict]:
     """demand_hist: serie de demanda historica (indexada por observed_at) de
     UNA estacion, ordenada ascendente.
 
@@ -62,6 +62,13 @@ def predict_station(demand_hist: pd.Series, context_row: dict, last_time: pd.Tim
     `blend_weight_seasonal` (0 = solo modelo, 1 = solo promedio historico).
     """
     anchor_feat = anchor_features_for_station(demand_hist, context_row, last_time)
+    # Ajuste de nivel reciente (ver LEVEL_WINDOW_POINTS en src/features.py):
+    # re-escala el perfil estacional con el nivel real de los ultimos 45 min
+    # de ESTA estacion, para seguir el drift en vez de quedarse en el
+    # promedio historico.
+    ratio = 1.0
+    if level_adjust and seasonal_lookup is not None and station_id is not None:
+        ratio = level_ratio_for_station(demand_hist, seasonal_lookup, station_id, last_time)
 
     rows = []
     for h in HORIZONS:
@@ -75,7 +82,7 @@ def predict_station(demand_hist: pd.Series, context_row: dict, last_time: pd.Tim
 
         pred_final = pred_ml
         if seasonal_lookup is not None and station_id is not None and blend_weight_seasonal > 0:
-            pred_seasonal = seasonal_value(seasonal_lookup, station_id, target_at, fallback=pred_ml)
+            pred_seasonal = seasonal_value(seasonal_lookup, station_id, target_at, fallback=pred_ml / ratio if ratio else pred_ml) * ratio
             pred_final = blend_weight_seasonal * pred_seasonal + (1 - blend_weight_seasonal) * pred_ml
 
         pred_final = max(0.0, pred_final)
@@ -84,33 +91,25 @@ def predict_station(demand_hist: pd.Series, context_row: dict, last_time: pd.Tim
 
 
 def main():
+    """Pronostico desplegado: ensamble adaptativo (src/ensemble.py) con el GBR
+    vigente como uno de los candidatos. Los pesos por estacion salen del
+    error real de las ultimas horas y quedan guardados como evidencia."""
+    import json
+    from src.ensemble import live_forecast
+
     bundle = joblib.load(ARTIFACTS / "model_gbr.joblib")
-    model, feature_cols = bundle["model"], bundle["features"]
-    seasonal_lookup_ = bundle.get("seasonal_lookup")
-    blend_weight = bundle.get("blend_weight_seasonal", 0.0)
-
     stations, observations, context = load_all()
-    last_context = context.sort_values("observed_at").iloc[-1]
-    context_row = {c: last_context[c] for c in ("rain_mm", "temperature_c", "event_intensity")}
-
-    commit = git_commit()
-    all_rows = []
-    for station_id, grp in observations.groupby("station_id"):
-        grp = grp.sort_values("observed_at")
-        demand_hist = pd.Series(grp["demand"].values, index=grp["observed_at"].values)
-        last_time = grp["observed_at"].max()
-        preds = predict_station(demand_hist, context_row, last_time, model, feature_cols,
-                                 seasonal_lookup=seasonal_lookup_, station_id=station_id,
-                                 blend_weight_seasonal=blend_weight)
-        for row in preds:
-            row.update({"station_id": station_id, "model_version": f"gbr@{commit}"})
-            all_rows.append(row)
-
-    out = pd.DataFrame(all_rows)[
-        ["station_id", "target_at", "horizon_steps", "predicted_demand", "model_version"]
-    ]
+    out, weights = live_forecast(observations, context, bundle)
+    out["model_version"] = f"ens-{bundle.get('model_id', 'gbr')}@{git_commit()}"
+    out = out[["station_id", "target_at", "horizon_steps", "predicted_demand", "model_version"]]
     out.to_csv(ARTIFACTS / "predictions_latest.csv", index=False)
+    (ARTIFACTS / "ensemble_weights.json").write_text(json.dumps({
+        "data_cutoff": str(observations["observed_at"].max()),
+        "pesos_por_estacion": weights.round(4).to_dict(orient="index"),
+    }, indent=2, ensure_ascii=False))
     print(out.to_string(index=False))
+    print("\nPesos del ensamble por estacion:")
+    print(weights.round(3).to_string())
     print(f"\n{len(out)} predicciones guardadas en artifacts/predictions_latest.csv")
 
 
