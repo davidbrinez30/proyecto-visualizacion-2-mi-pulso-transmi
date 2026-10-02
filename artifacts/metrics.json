@@ -120,30 +120,20 @@
   "modelo_desplegado": "gbr-20260919T1430-w3d",
   "gbr_train_cutoff": "2026-09-19 14:30:00+00:00",
   "decision_modelo": {
-    "reentrenar": true,
-    "razon": "degradacion sostenida del GBR: 50.1% y 55.6% en las dos ultimas ventanas de 3 h vs 61.3% de validacion (umbral -5 pts)",
+    "reentrenar": false,
+    "razon": "solo 0.0 h de datos nuevos (< 2 h de enfriamiento); se conserva el campeon",
     "politica": {
       "RETRAIN_MIN_NEW_HOURS": 6.0,
       "RETRAIN_COOLDOWN_HOURS": 2.0,
       "DEGRADATION_POINTS": 5.0,
       "HOLDOUT_HOURS": 6.0
     },
-    "horas_datos_nuevos": 3.5,
-    "accuracy_validacion_campeon": 61.281235874350465,
-    "accuracy_gbr_ultimas_3h": 55.56287097470487,
-    "accuracy_gbr_3h_anteriores": 50.11088803306651,
-    "retadores_holdout": {
-      "historia_completa": 57.2108255186017,
-      "ultimos_3_dias": 72.09617578313636
-    },
-    "mejor_retador": "ultimos_3_dias",
-    "accuracy_retador_holdout": 72.09617578313636,
-    "accuracy_campeon_holdout": 59.06041515699537,
-    "promovido": true,
+    "horas_datos_nuevos": 0.0,
+    "accuracy_validacion_campeon": 72.09617578313636,
     "modelo_desplegado": "gbr-20260919T1430-w3d"
   },
   "refit_final": {
-    "hecho": true,
-    "razon": "[gbr-20260919T1430-w3d] degradacion sostenida del GBR: 50.1% y 55.6% en las dos ultimas ventanas de 3 h vs 61.3% de validacion (umbral -5 pts)"
+    "hecho": false,
+    "razon": "[gbr-20260919T1430-w3d] solo 0.0 h de datos nuevos (< 2 h de enfriamiento); se conserva el campeon"
   }
 }
