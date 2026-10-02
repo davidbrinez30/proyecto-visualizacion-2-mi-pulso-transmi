@@ -101,6 +101,25 @@ def detect_data_drift(observations: pd.DataFrame, window_days: int = 7) -> list[
     return signals
 
 
+def _retry_session():
+    """Sesion HTTP con reintentos: el 01/oct una corrida se cayo por un
+    'Connection reset by peer' transitorio de Supabase y se perdio un ciclo
+    completo. Con reintentos (backoff 2, 4, 8, 16 s) un corte breve ya no
+    tumba el pipeline."""
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
+    s = requests.Session()
+    retry = Retry(total=5, connect=5, read=5, status=5, backoff_factor=2,
+                  status_forcelist=(429, 500, 502, 503, 504),
+                  allowed_methods=frozenset({"GET", "POST"}), raise_on_status=False)
+    s.mount("https://", HTTPAdapter(max_retries=retry))
+    s.mount("http://", HTTPAdapter(max_retries=retry))
+    return s
+
+
+_HTTP = _retry_session()
+
+
 def _supabase_headers(key: str) -> dict:
     return {"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json"}
 
@@ -115,7 +134,7 @@ def persist_to_supabase(run_row: dict, predictions_df: pd.DataFrame, metrics_row
     headers = _supabase_headers(key)
     rest = f"{url}/rest/v1"
 
-    run_resp = requests.post(f"{rest}/pipeline_runs", headers={**headers, "Prefer": "return=representation"},
+    run_resp = _HTTP.post(f"{rest}/pipeline_runs", headers={**headers, "Prefer": "return=representation"},
                               json=run_row, timeout=30)
     run_resp.raise_for_status()
     run_id = run_resp.json()[0]["id"]
@@ -124,7 +143,7 @@ def persist_to_supabase(run_row: dict, predictions_df: pd.DataFrame, metrics_row
         preds = predictions_df.copy()
         preds["run_id"] = run_id
         preds["target_at"] = preds["target_at"].astype(str)
-        pred_resp = requests.post(f"{rest}/predictions?on_conflict=run_id,station_id,target_at", headers={**headers, "Prefer": "resolution=merge-duplicates,return=minimal"}, json=preds.to_dict("records"), timeout=30)
+        pred_resp = _HTTP.post(f"{rest}/predictions?on_conflict=run_id,station_id,target_at", headers={**headers, "Prefer": "resolution=merge-duplicates,return=minimal"}, json=preds.to_dict("records"), timeout=30)
         if not pred_resp.ok:
             print(f"SUPABASE ERROR {pred_resp.status_code}: {pred_resp.text}")
         pred_resp.raise_for_status()
@@ -132,12 +151,12 @@ def persist_to_supabase(run_row: dict, predictions_df: pd.DataFrame, metrics_row
     for m in metrics_rows:
         m["run_id"] = run_id
     if metrics_rows:
-        requests.post(f"{rest}/metrics", headers=headers, json=metrics_rows, timeout=30).raise_for_status()
+        _HTTP.post(f"{rest}/metrics", headers=headers, json=metrics_rows, timeout=30).raise_for_status()
 
     for d in drift_rows:
         d["run_id"] = run_id
     if drift_rows:
-        requests.post(f"{rest}/drift_signals", headers=headers, json=drift_rows, timeout=30).raise_for_status()
+        _HTTP.post(f"{rest}/drift_signals", headers=headers, json=drift_rows, timeout=30).raise_for_status()
 
     return {"skipped": False, "run_id": run_id}
 
@@ -196,7 +215,13 @@ def main():
 
     predictions_df = pd.read_csv(predictions_path, dtype={"station_id": "string"}) if predictions_path.exists() else pd.DataFrame()
 
-    result = persist_to_supabase(run_row, predictions_df, metrics_rows, drift_signals)
+    try:
+        result = persist_to_supabase(run_row, predictions_df, metrics_rows, drift_signals)
+    except requests.RequestException as exc:
+        # Un fallo de Supabase no debe impedir el commit ni el envio de la
+        # prediccion al reto (pasos siguientes del workflow).
+        print(f"AVISO: no se pudo guardar la corrida en Supabase ({exc}).")
+        result = {"skipped": True, "reason": f"error de red con Supabase: {exc}"}
 
     history.append({"git_commit": run_row["git_commit"], "accuracy_mean": current_accuracy})
     history_path.write_text(json.dumps(history[-30:], indent=2))

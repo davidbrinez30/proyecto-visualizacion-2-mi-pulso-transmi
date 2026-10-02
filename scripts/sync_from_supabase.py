@@ -29,6 +29,25 @@ DATA = Path(__file__).resolve().parent.parent / "data"
 PAGE_SIZE = 5000
 
 
+def _retry_session():
+    """Sesion HTTP con reintentos: el 01/oct una corrida se cayo por un
+    'Connection reset by peer' transitorio de Supabase y se perdio un ciclo
+    completo. Con reintentos (backoff 2, 4, 8, 16 s) un corte breve ya no
+    tumba el pipeline."""
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
+    s = requests.Session()
+    retry = Retry(total=5, connect=5, read=5, status=5, backoff_factor=2,
+                  status_forcelist=(429, 500, 502, 503, 504),
+                  allowed_methods=frozenset({"GET", "POST"}), raise_on_status=False)
+    s.mount("https://", HTTPAdapter(max_retries=retry))
+    s.mount("http://", HTTPAdapter(max_retries=retry))
+    return s
+
+
+_HTTP = _retry_session()
+
+
 def _headers(key: str) -> dict:
     return {"apikey": key, "Authorization": f"Bearer {key}"}
 
@@ -44,7 +63,7 @@ def _get_all(rest: str, headers: dict, table: str, select: str, order: str) -> l
     rows: list[dict] = []
     offset = 0
     while True:
-        resp = requests.get(
+        resp = _HTTP.get(
             f"{rest}/{table}?select={select}&order={order}&limit={PAGE_SIZE}&offset={offset}",
             headers=headers, timeout=60,
         )
@@ -87,4 +106,10 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except requests.RequestException as exc:
+        # Si Supabase no responde ni con reintentos, NO se tumba el pipeline:
+        # se entrena con data/*.csv tal como lo dejaron fetch_data.py y
+        # fetch_stream_observations.py (y lo ultimo que se versiono en git).
+        print(f"AVISO: no se pudo reconstruir data/*.csv desde Supabase ({exc}); se usa el CSV local.")

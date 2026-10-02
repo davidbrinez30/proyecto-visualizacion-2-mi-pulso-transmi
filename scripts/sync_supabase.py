@@ -22,12 +22,31 @@ DATA = Path(__file__).resolve().parent.parent / "data"
 BATCH_SIZE = 2000
 
 
+def _retry_session():
+    """Sesion HTTP con reintentos: el 01/oct una corrida se cayo por un
+    'Connection reset by peer' transitorio de Supabase y se perdio un ciclo
+    completo. Con reintentos (backoff 2, 4, 8, 16 s) un corte breve ya no
+    tumba el pipeline."""
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
+    s = requests.Session()
+    retry = Retry(total=5, connect=5, read=5, status=5, backoff_factor=2,
+                  status_forcelist=(429, 500, 502, 503, 504),
+                  allowed_methods=frozenset({"GET", "POST"}), raise_on_status=False)
+    s.mount("https://", HTTPAdapter(max_retries=retry))
+    s.mount("http://", HTTPAdapter(max_retries=retry))
+    return s
+
+
+_HTTP = _retry_session()
+
+
 def _headers(key: str) -> dict:
     return {"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json"}
 
 
 def _max_observed_at(rest: str, headers: dict, table: str) -> pd.Timestamp | None:
-    resp = requests.get(
+    resp = _HTTP.get(
         f"{rest}/{table}?select=observed_at&order=observed_at.desc&limit=1",
         headers=headers, timeout=30,
     )
@@ -46,7 +65,7 @@ def _upsert(rest: str, headers: dict, table: str, df: pd.DataFrame, on_conflict:
     total = 0
     for start in range(0, len(records), BATCH_SIZE):
         chunk = records.iloc[start:start + BATCH_SIZE].to_dict("records")
-        resp = requests.post(
+        resp = _HTTP.post(
             f"{rest}/{table}?on_conflict={on_conflict}",
             headers={**headers, "Prefer": "resolution=merge-duplicates,return=minimal"},
             json=chunk, timeout=60,
@@ -93,4 +112,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except requests.RequestException as exc:
+        # Las filas siguen en data/*.csv; la proxima corrida las sube (compara contra el maximo de Supabase).
+        print(f"AVISO: no se pudo sincronizar con Supabase ({exc}); se reintenta en la proxima corrida.")
