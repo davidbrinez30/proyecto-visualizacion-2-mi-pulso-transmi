@@ -17,7 +17,9 @@ Que hace en cada corrida del pipeline (cada ~15 min):
      d) en otro caso                                            -> se conserva el campeon
 3. Si se reentrena: el RETADOR se entrena con datos hasta (ultimo dato -
    HOLDOUT_HOURS) y se compara contra el campeon en esas ultimas
-   HOLDOUT_HOURS (orden temporal, sin informacion futura). Solo se promueve
+   HOLDOUT_HOURS (orden temporal, sin informacion futura). Compiten dos
+   retadores: historia completa y solo los ultimos 3 dias (TRAIN_WINDOWS_DAYS);
+   gana el de mejor accuracy en ese holdout. Solo se promueve
    si iguala o mejora al campeon; si se promueve, se reajusta con todos los
    datos. La decision queda en artifacts/model_registry.json.
 4. Monitoreo: simula lo que el sistema desplegado (ensamble adaptativo de
@@ -84,9 +86,19 @@ def load_bundle() -> dict | None:
     return b
 
 
-def fit_gbr(multi: pd.DataFrame, cutoff: pd.Timestamp) -> GradientBoostingRegressor:
-    """Entrena con anclas cuyo target es <= cutoff (nada posterior al corte)."""
-    rows = multi[multi["target_at"] <= cutoff].dropna(subset=FEATURE_COLUMNS + ["demand_target"])
+# Ventanas de entrenamiento que compiten como retadores (dias de historia;
+# None = toda la historia). En drift, entrenar solo con lo reciente puede
+# servir mas que arrastrar semanas de un regimen que ya no existe.
+TRAIN_WINDOWS_DAYS = (None, 3)
+
+
+def fit_gbr(multi: pd.DataFrame, cutoff: pd.Timestamp, window_days=None) -> GradientBoostingRegressor:
+    """Entrena con anclas cuyo target es <= cutoff (nada posterior al corte);
+    con window_days, solo con los ultimos window_days dias antes del corte."""
+    rows = multi[multi["target_at"] <= cutoff]
+    if window_days is not None:
+        rows = rows[rows["target_at"] > cutoff - pd.Timedelta(days=window_days)]
+    rows = rows.dropna(subset=FEATURE_COLUMNS + ["demand_target"])
     model = GradientBoostingRegressor(**GBR_PARAMS)
     model.fit(rows[FEATURE_COLUMNS], rows["demand_target"])
     return model
@@ -211,22 +223,38 @@ def main():
     if retrain:
         multi = build_multihorizon_frame(observations, context)
         holdout_cut = data_max - pd.Timedelta(hours=HOLDOUT_HOURS)
-        challenger = fit_gbr(multi, holdout_cut)
-        ch_eval = gbr_eval(challenger, observations, context, holdout_cut, data_max)
+        # Retadores: misma receta con distintas ventanas de historia, todos
+        # entrenados SOLO con targets <= holdout_cut y evaluados en las
+        # ultimas HOLDOUT_HOURS (que ninguno vio). El campeon se evalua en la
+        # misma ventana.
+        retadores = {}
+        for w in TRAIN_WINDOWS_DAYS:
+            name = "historia_completa" if w is None else f"ultimos_{w}_dias"
+            m = fit_gbr(multi, holdout_cut, w)
+            ev = gbr_eval(m, observations, context, holdout_cut, data_max)
+            retadores[name] = {"window_days": w, "accuracy_holdout": ev["accuracy_mean"] if ev else None, "eval": ev}
+        best_name = max(retadores, key=lambda k: retadores[k]["accuracy_holdout"] if retadores[k]["accuracy_holdout"] is not None else -1)
+        best = retadores[best_name]
+        ch_eval = best["eval"]
         cp_eval = gbr_eval(champion["model"], observations, context, holdout_cut, data_max) if champion else None
-        acc_ch = ch_eval["accuracy_mean"] if ch_eval else None
+        acc_ch = best["accuracy_holdout"]
         acc_cp = cp_eval["accuracy_mean"] if cp_eval else None
         promote = champion is None or acc_cp is None or (acc_ch is not None and acc_ch >= acc_cp)
-        decision.update({"accuracy_retador_holdout": acc_ch, "accuracy_campeon_holdout": acc_cp, "promovido": promote})
+        decision.update({
+            "retadores_holdout": {k: v["accuracy_holdout"] for k, v in retadores.items()},
+            "mejor_retador": best_name,
+            "accuracy_retador_holdout": acc_ch, "accuracy_campeon_holdout": acc_cp, "promovido": promote,
+        })
         if promote:
-            final = fit_gbr(multi, data_max)
+            final = fit_gbr(multi, data_max, best["window_days"])
             deployed = {
                 "version": BUNDLE_VERSION,
                 "model": final,
                 "features": FEATURE_COLUMNS,
                 "train_cutoff": data_max,
                 "trained_at": now,
-                "model_id": f"gbr-{data_max:%Y%m%dT%H%M}",
+                "model_id": f"gbr-{data_max:%Y%m%dT%H%M}" + ("" if best["window_days"] is None else f"-w{best['window_days']}d"),
+                "train_window_days": best["window_days"],
                 "holdout_accuracy": acc_ch,
                 "holdout_wape_by_station": (ch_eval or {}).get("wape_by_station", {}),
             }

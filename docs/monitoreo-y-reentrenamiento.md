@@ -58,9 +58,12 @@ reentrenamientos en 151 corridas (≈ 1 de cada 11) en vez de reentrenar las
 
 ## 4. Comparación temporal sin información futura
 
-- El retador se entrena solo con targets ≤ (último dato − 6 h) y se compara
-  con el campeón en esas 6 h; se promueve solo si iguala o mejora. Si se
-  promueve, se reajusta con todos los datos.
+- Compiten dos retadores con distinta ventana de historia (toda la historia y
+  solo los últimos 3 días), ambos entrenados solo con targets ≤ (último dato −
+  6 h) y evaluados en esas 6 h junto al campeón. Gana el de mejor accuracy y se
+  promueve solo si iguala o mejora al campeón; si se promueve, se reajusta con
+  todos los datos de su ventana. En el drift, la ventana de 3 días ganó por
+  7-8 puntos (57.7% vs 50.5% y 63.6% vs 55.7% en el holdout).
 - Los pesos del ensamble usan solo errores de targets ya observados al
   momento de predecir; el GBR solo cuenta errores posteriores a su corte de
   entrenamiento.
