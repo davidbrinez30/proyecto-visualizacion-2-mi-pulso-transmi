@@ -96,7 +96,7 @@
     }
   },
   "blend_final": {
-    "wape_mean": 0.10868945339823538,
+    "wape_mean": 0.1086894533982354,
     "accuracy_mean": 89.13105466017646,
     "wape_by_station": {
       "02300": 0.1175,
