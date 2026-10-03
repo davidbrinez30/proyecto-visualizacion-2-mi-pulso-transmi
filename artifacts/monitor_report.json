@@ -1,7 +1,7 @@
 {
   "run": {
-    "git_commit": "ff600e8",
-    "model_version": "ens-gbr-20260920T0830-w3d@ff600e8",
+    "git_commit": "9506caf",
+    "model_version": "ens-gbr-20260920T0830-w3d@9506caf",
     "data_cutoff": "2026-09-20 10:30:00+00:00",
     "status": "success",
     "retrained": false,
@@ -15,7 +15,7 @@
       "signal_value": 0.8487,
       "threshold": 0.25,
       "triggered": true,
-      "run_id": 974
+      "run_id": 975
     },
     {
       "station_id": "03000",
@@ -23,7 +23,7 @@
       "signal_value": -0.1677,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 974
+      "run_id": 975
     },
     {
       "station_id": "05000",
@@ -31,7 +31,7 @@
       "signal_value": 1.0075,
       "threshold": 0.25,
       "triggered": true,
-      "run_id": 974
+      "run_id": 975
     },
     {
       "station_id": "05100",
@@ -39,7 +39,7 @@
       "signal_value": -0.6324,
       "threshold": 0.25,
       "triggered": true,
-      "run_id": 974
+      "run_id": 975
     },
     {
       "station_id": "06000",
@@ -47,7 +47,7 @@
       "signal_value": 0.6298,
       "threshold": 0.25,
       "triggered": true,
-      "run_id": 974
+      "run_id": 975
     },
     {
       "station_id": "06111",
@@ -55,7 +55,7 @@
       "signal_value": 0.1145,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 974
+      "run_id": 975
     },
     {
       "station_id": "07105",
@@ -63,7 +63,7 @@
       "signal_value": 0.2363,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 974
+      "run_id": 975
     },
     {
       "station_id": "07107",
@@ -71,7 +71,7 @@
       "signal_value": 0.0439,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 974
+      "run_id": 975
     },
     {
       "station_id": "07111",
@@ -79,7 +79,7 @@
       "signal_value": 0.8471,
       "threshold": 0.25,
       "triggered": true,
-      "run_id": 974
+      "run_id": 975
     },
     {
       "station_id": "09000",
@@ -87,7 +87,7 @@
       "signal_value": 0.0054,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 974
+      "run_id": 975
     },
     {
       "station_id": "09122",
@@ -95,7 +95,7 @@
       "signal_value": 0.5539,
       "threshold": 0.25,
       "triggered": true,
-      "run_id": 974
+      "run_id": 975
     },
     {
       "station_id": "10009",
@@ -103,11 +103,11 @@
       "signal_value": -0.1713,
       "threshold": 0.25,
       "triggered": false,
-      "run_id": 974
+      "run_id": 975
     }
   ],
   "supabase": {
     "skipped": false,
-    "run_id": 974
+    "run_id": 975
   }
 }
