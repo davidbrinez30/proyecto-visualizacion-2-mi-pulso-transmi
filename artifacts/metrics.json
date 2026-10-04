@@ -122,28 +122,20 @@
   "modelo_desplegado": "gbr-20260921T0430-w3d",
   "gbr_train_cutoff": "2026-09-21 04:30:00+00:00",
   "decision_modelo": {
-    "reentrenar": true,
-    "razon": "6.0 h de datos nuevos desde el ultimo entrenamiento (umbral 6 h)",
+    "reentrenar": false,
+    "razon": "solo 0.0 h de datos nuevos (< 2 h de enfriamiento); se conserva el campeon",
     "politica": {
       "RETRAIN_MIN_NEW_HOURS": 6.0,
       "RETRAIN_COOLDOWN_HOURS": 2.0,
       "DEGRADATION_POINTS": 5.0,
       "HOLDOUT_HOURS": 6.0
     },
-    "horas_datos_nuevos": 6.0,
-    "accuracy_validacion_campeon": 59.07950112176149,
-    "retadores_holdout": {
-      "historia_completa": 61.67401997254612,
-      "ultimos_3_dias": 67.69045840260489
-    },
-    "mejor_retador": "ultimos_3_dias",
-    "accuracy_retador_holdout": 67.69045840260489,
-    "accuracy_campeon_holdout": 61.67401997254612,
-    "promovido": true,
+    "horas_datos_nuevos": 0.0,
+    "accuracy_validacion_campeon": 67.69045840260489,
     "modelo_desplegado": "gbr-20260921T0430-w3d"
   },
   "refit_final": {
-    "hecho": true,
-    "razon": "[gbr-20260921T0430-w3d] 6.0 h de datos nuevos desde el ultimo entrenamiento (umbral 6 h)"
+    "hecho": false,
+    "razon": "[gbr-20260921T0430-w3d] solo 0.0 h de datos nuevos (< 2 h de enfriamiento); se conserva el campeon"
   }
 }
