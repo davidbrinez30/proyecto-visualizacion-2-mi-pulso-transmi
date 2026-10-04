@@ -122,28 +122,20 @@
   "modelo_desplegado": "gbr-20260920T2230",
   "gbr_train_cutoff": "2026-09-20 22:30:00+00:00",
   "decision_modelo": {
-    "reentrenar": true,
-    "razon": "6.0 h de datos nuevos desde el ultimo entrenamiento (umbral 6 h)",
+    "reentrenar": false,
+    "razon": "solo 0.0 h de datos nuevos (< 2 h de enfriamiento); se conserva el campeon",
     "politica": {
       "RETRAIN_MIN_NEW_HOURS": 6.0,
       "RETRAIN_COOLDOWN_HOURS": 2.0,
       "DEGRADATION_POINTS": 5.0,
       "HOLDOUT_HOURS": 6.0
     },
-    "horas_datos_nuevos": 6.0,
-    "accuracy_validacion_campeon": 58.538564483258874,
-    "retadores_holdout": {
-      "historia_completa": 59.07950112176149,
-      "ultimos_3_dias": 55.73490015817462
-    },
-    "mejor_retador": "historia_completa",
-    "accuracy_retador_holdout": 59.07950112176149,
-    "accuracy_campeon_holdout": 58.728488004057766,
-    "promovido": true,
+    "horas_datos_nuevos": 0.0,
+    "accuracy_validacion_campeon": 59.07950112176149,
     "modelo_desplegado": "gbr-20260920T2230"
   },
   "refit_final": {
-    "hecho": true,
-    "razon": "[gbr-20260920T2230] 6.0 h de datos nuevos desde el ultimo entrenamiento (umbral 6 h)"
+    "hecho": false,
+    "razon": "[gbr-20260920T2230] solo 0.0 h de datos nuevos (< 2 h de enfriamiento); se conserva el campeon"
   }
 }
