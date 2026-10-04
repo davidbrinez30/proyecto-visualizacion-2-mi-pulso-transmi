@@ -21,6 +21,9 @@ Candidatos (todos usan SOLO datos observados hasta el ancla t):
   - persistencia:       ultimo valor observado
   - tendencia:          ultimo valor + pendiente de los ultimos 15 min, amortiguada (cambios rapidos de forma)
   - ayer_escalado:      mismo horario de ayer x (ultimos 30 min / mismos 30 min de ayer)
+  - ciclo_promedio:     promedio del mismo punto del ciclo detectado en los ciclos de las ultimas 24 h
+                        (hasta 6): promediar varios ciclos quita ruido (2/oct: 87.6% -> 92.7% en el ciclo de 4 h)
+  - ciclo_promedio_nivel: lo mismo, ajustado (suavemente) al nivel de las ultimas 2 h
   - ciclo_detectado:    detecta el periodo dominante de las ultimas 12 h (2-12 h, por autocorrelacion)
                         y repite ese ciclo escalado al nivel actual. Existe porque en la fase de drift
                         del 18/sep la demanda paso a un ciclo de 4 h que ningun perfil diario captura.
@@ -43,11 +46,16 @@ import pandas as pd
 
 from src.features import FEATURE_COLUMNS, HORIZONS, build_multihorizon_frame
 
-CANDIDATES = ("nivel_30m", "nivel_45m_perfil7d", "persistencia", "tendencia", "ayer_escalado", "ciclo_detectado", "gbr")
+CANDIDATES = ("nivel_30m", "nivel_45m_perfil7d", "persistencia", "tendencia", "ayer_escalado", "ciclo_detectado",
+              "ciclo_promedio", "ciclo_promedio_nivel", "gbr")
 WEIGHT_WINDOW_HOURS = 2     # ventana de error reciente para los pesos: corta para cambiar rapido de candidato
 WEIGHT_POWER = 3            # peso ~ (1 / WAPE)^3: premia fuerte al que va mejor
 CYCLE_LAGS = range(8, 49)    # periodos candidatos: 2 h a 12 h (en pasos de 15 min)
 CYCLE_WINDOW = 48            # autocorrelacion medida sobre las ultimas 12 h
+CYCLE_AVG_STEPS = 96         # ciclo_promedio: promedia los ciclos de las ultimas 24 h (max 6 ciclos)
+CYCLE_AVG_MAX_K = 6
+CYCLE_LEVEL_POINTS = 8       # ciclo_promedio_nivel: nivel de las ultimas 2 h vs las mismas 2 h de ciclos previos
+CYCLE_LEVEL_ALPHA = 0.5      # ajuste de nivel suavizado (raiz cuadrada del ratio)
 TREND_DAMPING = 0.8         # tendencia amortiguada: P(t) + pendiente * (0.8 + 0.8^2 + ...)
 MIN_POINTS_FOR_WEIGHT = 8   # minimo de errores observados para confiar en el WAPE de un candidato
 RATIO_CLIP = (0.05, 20.0)
@@ -138,6 +146,8 @@ def candidate_forecasts(P: pd.DataFrame, lookups: dict, anchors: pd.DatetimeInde
     out = {c: {} for c in CANDIDATES}
     for h in HORIZONS:
         cyc = np.full((len(anchors), len(cols)), np.nan)
+        cyc_avg = np.full((len(anchors), len(cols)), np.nan)
+        cyc_avg_lvl = np.full((len(anchors), len(cols)), np.nan)
         for k, t in enumerate(anchors):
             L = best_lag.iloc[k]
             if pd.isna(L):
@@ -150,7 +160,24 @@ def candidate_forecasts(P: pd.DataFrame, lookups: dict, anchors: pd.DatetimeInde
             den = np.nansum(Av[i - 1 - L:i + 1 - L], axis=0)
             r = np.where(den > 0, num / np.where(den > 0, den, 1), 1.0)
             cyc[k] = base * np.clip(r, *RATIO_CLIP)
+            # promedio de varios ciclos anteriores (solo datos <= ancla: i + h - kL <= i)
+            K = max(1, min(CYCLE_AVG_MAX_K, CYCLE_AVG_STEPS // L))
+            ks = [kk for kk in range(1, K + 1) if i + h - kk * L >= 0]
+            if ks:
+                avg = np.nanmean(np.stack([Av[i + h - kk * L] for kk in ks]), axis=0)
+                cyc_avg[k] = avg
+                lk = [kk for kk in ks if i - CYCLE_LEVEL_POINTS + 1 - kk * L >= 0]
+                if lk:
+                    num_l = np.nansum(Av[i - CYCLE_LEVEL_POINTS + 1:i + 1], axis=0)
+                    den_l = np.nanmean(np.stack([np.nansum(Av[i - CYCLE_LEVEL_POINTS + 1 - kk * L:i + 1 - kk * L], axis=0)
+                                                 for kk in lk]), axis=0)
+                    rl = np.where(den_l > 0, num_l / np.where(den_l > 0, den_l, 1), 1.0)
+                    cyc_avg_lvl[k] = avg * np.clip(rl, *RATIO_CLIP) ** CYCLE_LEVEL_ALPHA
+                else:
+                    cyc_avg_lvl[k] = avg
         out["ciclo_detectado"][h] = pd.DataFrame(cyc, index=anchors, columns=cols)
+        out["ciclo_promedio"][h] = pd.DataFrame(cyc_avg, index=anchors, columns=cols)
+        out["ciclo_promedio_nivel"][h] = pd.DataFrame(cyc_avg_lvl, index=anchors, columns=cols)
         tgt = anchors + h * PERIOD
         out["nivel_30m"][h] = pd.DataFrame(Ef.reindex(tgt).values * r2_full.reindex(anchors).values,
                                            index=anchors, columns=cols)

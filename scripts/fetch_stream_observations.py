@@ -29,6 +29,21 @@ HEADERS = {"Authorization": f"Bearer {API_KEY}"}
 PAGE_LIMIT = 5000
 
 
+def _normalize(r: dict) -> dict:
+    """Contrato de observacion v2 (fase final, docs/fase-final.md del reto):
+    desde 2026-09-20T12:00Z (virtual) los registros traen
+    measurement.value (texto decimal o null) y measurement.quality
+    (observed|missing) en vez del campo plano `demand`. Una pagina puede
+    mezclar v1 y v2. Un faltante NO es cero: queda como NaN y se descarta."""
+    if "measurement" in r:
+        m = r.get("measurement") or {}
+        val = m.get("value")
+        demand = int(round(float(val))) if (val is not None and m.get("quality", "observed") == "observed") else None  # Supabase guarda demand como integer
+    else:
+        demand = r.get("demand")
+    return {"observed_at": r["observed_at"], "station_id": str(r["station_id"]), "demand": demand}
+
+
 def main() -> None:
     cursor = CURSOR_FILE.read_text().strip() if CURSOR_FILE.exists() else None
     if cursor == "":
@@ -56,7 +71,11 @@ def main() -> None:
     print(f"Total filas nuevas del stream: {len(new_rows)}")
 
     if new_rows:
-        new_df = pd.DataFrame(new_rows)[["observed_at", "station_id", "demand"]]
+        new_df = pd.DataFrame([_normalize(r) for r in new_rows])
+        n_missing = int(new_df["demand"].isna().sum())
+        n_v2 = sum(1 for r in new_rows if r.get("schema_version") == 2)
+        print(f"Registros v2: {n_v2} | faltantes (quality=missing, se descartan, NO se toman como cero): {n_missing}")
+        new_df = new_df.dropna(subset=["demand"])
         new_df["station_id"] = new_df["station_id"].astype(str)
         new_df["observed_at"] = pd.to_datetime(new_df["observed_at"], utc=True, errors="coerce")
 
@@ -73,7 +92,8 @@ def main() -> None:
             combined = combined.drop_duplicates(subset=["station_id", "observed_at"], keep="last")
         else:
             combined = new_df
-        combined = combined.dropna(subset=["observed_at"])
+        combined = combined.dropna(subset=["observed_at", "demand"])
+        combined["demand"] = combined["demand"].round().astype(int)
         combined = combined.sort_values(["station_id", "observed_at"])
         combined["observed_at"] = combined["observed_at"].apply(lambda ts: ts.isoformat())
         combined.to_csv(OBSERVATIONS_CSV, index=False)
