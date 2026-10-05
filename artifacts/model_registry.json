@@ -657,5 +657,30 @@
     "accuracy_campeon_holdout": 77.68243318625868,
     "promovido": true,
     "modelo_desplegado": "gbr-20260921T1100"
+  },
+  {
+    "evaluado_en": "2026-10-05T01:26:14.807266+00:00",
+    "corte_datos": "2026-09-21 14:30:00+00:00",
+    "reentrenar": true,
+    "razon": "degradacion sostenida del GBR: 59.1% y 61.8% en las dos ultimas ventanas de 3 h vs 78.1% de validacion (umbral -5 pts)",
+    "politica": {
+      "RETRAIN_MIN_NEW_HOURS": 6.0,
+      "RETRAIN_COOLDOWN_HOURS": 2.0,
+      "DEGRADATION_POINTS": 5.0,
+      "HOLDOUT_HOURS": 6.0
+    },
+    "horas_datos_nuevos": 3.5,
+    "accuracy_validacion_campeon": 78.05850417861474,
+    "accuracy_gbr_ultimas_3h": 61.79749441671541,
+    "accuracy_gbr_3h_anteriores": 59.12708789434357,
+    "retadores_holdout": {
+      "historia_completa": 71.76443983631751,
+      "ultimos_3_dias": 79.13306072345215
+    },
+    "mejor_retador": "ultimos_3_dias",
+    "accuracy_retador_holdout": 79.13306072345215,
+    "accuracy_campeon_holdout": 71.6134161240801,
+    "promovido": true,
+    "modelo_desplegado": "gbr-20260921T1430-w3d"
   }
 ]
