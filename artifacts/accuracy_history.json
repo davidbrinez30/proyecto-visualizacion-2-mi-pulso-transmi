@@ -1,9 +1,5 @@
 [
   {
-    "git_commit": "064749a",
-    "accuracy_mean": 81.23840981161028
-  },
-  {
     "git_commit": "4c7fe0a",
     "accuracy_mean": 81.23840981161028
   },
@@ -117,6 +113,10 @@
   },
   {
     "git_commit": "9ac50cc",
+    "accuracy_mean": 81.23840981161028
+  },
+  {
+    "git_commit": "2657ce8",
     "accuracy_mean": 81.23840981161028
   }
 ]
